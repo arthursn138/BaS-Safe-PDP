@@ -1,4 +1,6 @@
 '''
+# This module is a modification of JinEnv, from Wanxin Jin
+
 # This module is a simulation environment, which provides different-level (from easy to hard)
 # simulation benchmark environments and animation facilities for the user to test their learning algorithm.
 # This environment is versatile to use, e.g. the user can arbitrarily:
@@ -7,11 +9,11 @@
 # define and modify the control cost function
 # animate the motion of the system.
 
-# Do NOT distribute without written permission from Wanxin Jin
+# Do NOT distribute without written permission from Wanxin Jin and Arthur Nascimento
 # Do NOT use it for any commercial purpose
 
-# Contact email: wanxinjin@gmail.com
-# Last update: May. 15, 2020
+# Contact email: arthursn.138@gmail.com
+# Last update: Nov 16 2022
 
 #
 

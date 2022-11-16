@@ -8,7 +8,7 @@ from SafePDP import PDP
 
 
 # This class contains the following  utilities:
-# 1) define an parameterized constraint optimal control system
+# 1) define a parameterized constraint optimal control system
 # 2) provide a constraint optimal control solver
 # 3) differentiate the Pontryagin maximum principle (differential PMP)
 # 4) generate the auxiliary control system

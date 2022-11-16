@@ -2,7 +2,7 @@ import numpy as np
 
 from SafePDP import SafePDP
 from SafePDP import PDP
-from JinEnv import JinEnv
+from NascimEnv import NascimEnv
 from casadi import *
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import time
 import random
 
 # --------------------------- load environment ----------------------------------------
-env = JinEnv.CartPole()
+env = NascimEnv.CartPole()
 mc, mp, l = 0.5, 0.5, 1
 env.initDyn(mc=mc, mp=mp, l=l)
 wx, wq, wdx, wdq, wu = 0.1, 1, 0.1, 0.1, 0.1
@@ -44,7 +44,7 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'])
+env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -87,25 +87,25 @@ for k in range(int(max_iter)):
     if k % 100 == 0:
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
-# save the results
-if True:
-    save_data = {'parameter_trace': parameter_trace,
-                 'loss_trace': loss_trace,
-                 'loss_barrier_trace': loss_barrier_trace,
-                 'gamma': gamma,
-                 'coc_sol': coc_sol,
-                 'lr': lr,
-                 'init_parameter': init_parameter,
-                 'n_poly': n_poly,
-                 'nn_seed': nn_seed}
-    np.save('./Results/SPlan_Cartpole_trial_2.npy', save_data)
+# # save the results
+# if True:
+#     save_data = {'parameter_trace': parameter_trace,
+#                  'loss_trace': loss_trace,
+#                  'loss_barrier_trace': loss_barrier_trace,
+#                  'gamma': gamma,
+#                  'coc_sol': coc_sol,
+#                  'lr': lr,
+#                  'init_parameter': init_parameter,
+#                  'n_poly': n_poly,
+#                  'nn_seed': nn_seed}
+#     np.save('./Results/SPlan_Cartpole_trial_2.npy', save_data)
 
-plt.plot(control_traj, label='SPDP_control')
-plt.plot(coc_sol['control_traj_opt'], label='ct_control')
-plt.plot(state_traj[:, 0], label='SPDP_cart_pos')
-plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
-plt.fill_between(np.arange(0, horizon), max_x, -max_x, color='red', alpha=0.2)
-plt.fill_between(np.arange(0, horizon), max_u, -max_u, color='green', alpha=0.2)
-plt.legend()
-plt.show()
-env.play_animation(pole_len=2, dt=dt, state_traj=state_traj)
+# plt.plot(control_traj, label='SPDP_control')
+# plt.plot(coc_sol['control_traj_opt'], label='ct_control')
+# plt.plot(state_traj[:, 0], label='SPDP_cart_pos')
+# plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
+# plt.fill_between(np.arange(0, horizon), max_x, -max_x, color='red', alpha=0.2)
+# plt.fill_between(np.arange(0, horizon), max_u, -max_u, color='green', alpha=0.2)
+# plt.legend()
+# plt.show()
+env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='Learned Motion (Safe)')

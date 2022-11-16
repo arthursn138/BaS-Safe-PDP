@@ -4,7 +4,7 @@ from ControlTools import ControlTools
 
 from SafePDP import SafePDP
 from SafePDP import PDP
-from JinEnv import JinEnv
+from NascimEnv import NascimEnv
 from casadi import *
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ import time
 import random
 
 # --------------------------- load environment ----------------------------------------
-env = JinEnv.CartPole()
+env = NascimEnv.CartPole()
 mc, mp, l = 0.5, 0.5, 1
 env.initDyn(mc=mc, mp=mp, l=l)
 wx, wq, wdx, wdq, wu = 0.1, 1, 0.1, 0.1, 0.1
@@ -35,7 +35,7 @@ coc.setFinalCost(env.final_cost)
 coc.setPathInequCstr(env.path_inequ)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'])
+# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -103,22 +103,22 @@ for j in range(max_outer):
     print('iter #', j * max_inner, 'al_cost:', al_cost, 'loss:', cost)
 
 
-# save the results
-if True:
-    save_data = {'control_traj_trace': control_traj_trace,
-                 'loss_trace': loss_trace,
-                 'coc_sol': coc_sol,
-                 'max_outer': max_outer,
-                 'max_inner': max_inner,
-                 'base_mu': base_mu,
-                 'lr': lr}
-    np.save('./Results/ALTRO_Cartpole_trial_1.npy', save_data)
+# # save the results
+# if True:
+#     save_data = {'control_traj_trace': control_traj_trace,
+#                  'loss_trace': loss_trace,
+#                  'coc_sol': coc_sol,
+#                  'max_outer': max_outer,
+#                  'max_inner': max_inner,
+#                  'base_mu': base_mu,
+#                  'lr': lr}
+#     np.save('./Results/ALTRO_Cartpole_trial_1.npy', save_data)
 
 
 # plot and animation
-# sol = altro.integrateSys(init_state, control_traj)
-# print(sol['cost'])
-# env.play_animation(pole_len=2, dt=dt, state_traj=sol['state_traj'])
+sol = altro.integrateSys(init_state, control_traj)
+print(sol['cost'])
+env.play_animation(pole_len=2, dt=dt, state_traj=sol['state_traj'], save_option=1, title='ALTRO')
 # plt.plot(sol['control_traj'], label='ct_control')
 # plt.plot(sol['state_traj'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), max_x, -max_x, color='red', alpha=0.2)
