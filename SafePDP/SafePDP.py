@@ -935,9 +935,9 @@ class CSysOPT:
 
     # set the trajectory parameterization for planning task
     def setPolyTraj(self, horizon, n_poly=5):
-        # Use the Lagrange polynomial to represent the control trajectory function: u_t=u(t,control_auxvar).
+        # Use the Lagrange polynomial to represent the control trajectory function: u_t = u(t, control_auxvar).
         # The state trajectory is a result of dynamics and the polynomial trajectory.
-        # Note that  we parameterize the control trajectory as Lagrangian polynomial with the parameters being the pivot
+        # Note that we parameterize the control trajectory as Lagrangian polynomial with the parameters being the pivot
 
         # set the control polynomial policy
         pivots = numpy.linspace(0, horizon, n_poly + 1)
@@ -1043,7 +1043,7 @@ class CSysOPT:
 
     # one step to compute gradient descent
     def step(self, init_state, horizon, control_auxvar_value, damping_flag=False, damping_lambda=0.001):
-        # in case of not differentating the system
+        # in case of not differentiating the system
         if not hasattr(self, 'ddCBxx_final_fn'):
             self.diffSys()
 
@@ -1091,7 +1091,7 @@ class CSysOPT:
         cost_barrier_value += self.controlled_final_cb_fn(curr_x)
         cost_value += self.final_cost_fn(curr_x)
 
-        # compute the (second-order) gradient of the cost_barrier function using raccati-type equation
+        # compute the (second-order) gradient of the cost_barrier function using Riccati-type equation
         P = [None] * (horizon + 1)
         p = [None] * (horizon + 1)
         K = [None] * (horizon + 1)

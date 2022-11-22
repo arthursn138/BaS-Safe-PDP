@@ -3,6 +3,7 @@ import numpy as np
 from SafePDP import SafePDP
 from SafePDP import PDP
 from NascimEnv import NascimEnv
+from BaS import BaS
 from casadi import *
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -15,9 +16,9 @@ mc, mp, l = 0.5, 0.5, 1
 env.initDyn(mc=mc, mp=mp, l=l)
 wx, wq, wdx, wdq, wu = 0.1, 1, 0.1, 0.1, 0.1
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wu=wu)
-max_x = 1
-max_u = 4
-env.initConstraints(max_u=4, max_x=max_x)
+max_x = 1       # CONSTRAINT / OBSTACLE FOR BAS
+max_u = 1e10    # CONTROL LIMIT
+env.initConstraints(max_u=max_u, max_x=max_x)
 dt = 0.12
 horizon = 25
 init_state = [0, 0, 0, 0]
@@ -43,7 +44,7 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
+# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -52,6 +53,28 @@ env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save
 # plt.show()
 
 # TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO?)
+
+# --------------------------- Barrier States Augmentation ----------------------------------------
+cart_limit = max_x
+bas = env
+# Create obstacles and barrier functions
+h = cart_limit ** 2 - bas.f[0] ** 2
+h_fn = casadi.Function('h_fn', [bas.X], [h])
+B = 1/h
+B_fn = casadi.Function('B_fn', [bas.X], [B])
+# Augment the dynamics / State-space
+z = SX.sym('z')
+bas_states = vertcat(bas.X, z) # NA VDD TEM QUE STACKAR O X0 E XF
+# AÍ COMO É QUE STACKA O B EMBAIXO DAS OUTRAS EQ DE DYN SEM SER NA MÃO????
+
+# bas_dyn = vertcat(bas.f, B_fn)
+# bas_dyn_disc = bas.X + dt * bas_dyn
+
+# FODAC, FAZ NA MÃO MEMO SÓ PRA TER ALGUMA COISA, DEPOIS PENSA EM COMO FAZER AUTOMATICAMENTE
+
+# SE ENSEBAR MTO (40MIN MAXIMO) METE DIRETÃO NO NASCIMENV UM CTRL C+V DO CARTPOLE PRA CARTPOLE_BAS, E SÓ ENFIA A FUNCAO LÁ NA MAO MEMO
+
+
 
 # --------------------------- Safe Motion SPlan ----------------------------------------
 # set the policy as polynomial

@@ -422,7 +422,7 @@ class CartPole:
 
     def initDyn(self, mc=None, mp=None, l=None):
         # set the global parameters
-        g = 10
+        g = 9.81
 
         # declare system parameters
         parameter = []

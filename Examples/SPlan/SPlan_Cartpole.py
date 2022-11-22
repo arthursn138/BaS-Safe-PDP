@@ -44,7 +44,7 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver')
+env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -52,12 +52,14 @@ env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save
 # plt.legend()
 # plt.show()
 
+# TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO?)
+
 # --------------------------- Safe Motion Planning ----------------------------------------
 # set the policy as polynomial
 n_poly = 10
 planner.setPolyTraj(horizon=horizon, n_poly=n_poly)
 # set the initial condition
-nn_seed=None
+nn_seed = None
 init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial condition
 # nn_seed = 200 # e.g. 200,300, 400, 500
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
@@ -108,4 +110,4 @@ for k in range(int(max_iter)):
 # plt.fill_between(np.arange(0, horizon), max_u, -max_u, color='green', alpha=0.2)
 # plt.legend()
 # plt.show()
-env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='Learned Motion (Safe)')
+env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0, title='Learned Motion (Safe)')
