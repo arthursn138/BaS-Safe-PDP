@@ -623,6 +623,231 @@ class CartPole:
             position[t, :] = np.array([cart_pos_x, cart_pos_y, pole_pos_x, pole_pos_y])
         return position
 
+# Cart Pole environment
+class BaS_CartPole:
+    def __init__(self, project_name='BaS-augmented-cart-pole-system'):
+        self.project_name = project_name
+
+    def initDyn(self, mc=None, mp=None, l=None, cart_limit=1):
+        # set the global parameters
+        g = 9.81
+
+        # declare system parameters
+        parameter = []
+        if mc is None:
+            self.mc = SX.sym('mc')
+            parameter += [self.mc]
+        else:
+            self.mc = mc
+
+        if mp is None:
+            self.mp = SX.sym('mp')
+            parameter += [self.mp]
+        else:
+            self.mp = mp
+        if l is None:
+            self.l = SX.sym('l')
+            parameter += [self.l]
+        else:
+            self.l = l
+        self.dyn_auxvar = vcat(parameter)
+
+        # Declare system variables
+        self.x, self.q, self.dx, self.dq, self.z = SX.sym('x'), SX.sym('q'), SX.sym('dx'), SX.sym('dq'), SX.sym('z')
+        self.X = vertcat(self.x, self.q, self.dx, self.dq, self.z)
+        self.U = SX.sym('u')
+        ddx = (self.U + self.mp * sin(self.q) * (self.l * self.dq * self.dq + g * cos(self.q))) / (
+                self.mc + self.mp * sin(self.q) * sin(self.q))  # acceleration of x
+        ddq = (-self.U * cos(self.q) - self.mp * self.l * self.dq * self.dq * sin(self.q) * cos(self.q) - (
+                self.mc + self.mp) * g * sin(
+            self.q)) / (
+                      self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))  # acceleration of theta
+        # AJEITAR UMA MANEIRA DE ENFIAR QLQ h AO INVÉS DE SÓ ESSE
+        z = 1/(cart_limit ** 2 - self.x ** 2)
+        self.f = vertcat(self.dx, self.dq, ddx, ddq, z)  # continuous dynamics
+
+    def initCost(self, wx=None, wq=None, wdx=None, wdq=None, wz=0.01, cart_limit=1, wu=0.001):
+        # declare system parameters
+        parameter = []
+        if wx is None:
+            self.wx = SX.sym('wx')
+            parameter += [self.wx]
+        else:
+            self.wx = wx
+
+        if wq is None:
+            self.wq = SX.sym('wq')
+            parameter += [self.wq]
+        else:
+            self.wq = wq
+        if wdx is None:
+            self.wdx = SX.sym('wdx')
+            parameter += [self.wdx]
+        else:
+            self.wdx = wdx
+
+        if wdq is None:
+            self.wdq = SX.sym('wdq')
+            parameter += [self.wdq]
+        else:
+            self.wdq = wdq
+
+        if wz is None:
+            self.wz = SX.sym('wz')
+            parameter += [self.wz]
+        else:
+            self.wz = wz
+
+        self.cost_auxvar = vcat(parameter)
+
+        X_goal = [0.0, math.pi, 0.0, 0.0]
+
+        # AQUI TBM TEM QUE ARRANJAR UM JEITO MELHOR DE ENFIAR QLQ h
+        zf = 1 / (cart_limit ** 2 - X_goal[0] ** 2)
+
+        X_goal += [zf]
+
+        self.xf = X_goal
+
+        self.path_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
+                self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
+                self.z - X_goal[4]) ** 2 + wu * (self.U * self.U)
+        self.final_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
+                self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
+                self.z - X_goal[4]) ** 2                                                        # final cost
+
+    def initCost_Quadratic(self, state_weights=None, wu=0.001):
+        # the path cost is of the form (x-b)'A(x-b)+wu*u'u, where A is the diagonal (diag_A)
+        goal_X = [0, pi, 0, 0]
+
+        if state_weights is None:
+            state_weights = SX.sym('state_weights', self.X.numel())
+            self.cost_auxvar = vcat([state_weights])
+        else:
+            self.cost_auxvar = vcat([])
+
+        self.path_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X) + wu * dot(self.U, self.U)
+        self.final_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X)
+
+    def initConstraints(self, max_u=None, max_x=None):
+        # set path constraint h_final(x)
+        constraint_auxvar = []
+        if max_u is None:
+            max_u = SX.sym('max_u')
+            constraint_auxvar += [max_u]
+        if max_x is None:
+            max_x = SX.sym('max_x')
+            constraint_auxvar += [max_x]
+        self.constraint_auxvar = vcat(constraint_auxvar)
+
+        path_inequ_Uub = self.U - max_u
+        path_inequ_Ulb = -self.U - max_u
+        path_inequ_Xub = self.X[0] - max_x
+        path_inequ_Xlb = -self.X[0] - max_x
+        self.path_inequ = vcat([path_inequ_Uub, path_inequ_Ulb, path_inequ_Xub, path_inequ_Xlb])
+
+    def initConstraints2(self, max_x, max_dx):
+        path_inequ_1 = self.X[0] - max_x
+        path_inequ_2 = -self.X[0] - max_x
+        path_inequ_3 = self.X[2] - max_dx
+        path_inequ_4 = -self.X[2] - max_dx
+
+        self.constraint_auxvar = []
+
+        self.path_inequ = vcat([path_inequ_1, path_inequ_2, path_inequ_3, path_inequ_4])
+
+    def play_animation(self, pole_len, dt, state_traj, state_traj_ref=None, save_option=0, title='Cart-pole system'):
+
+        # get the position of cart pole
+        position = self.get_cartpole_position(pole_len, state_traj)
+        horizon = position.shape[0]
+        if state_traj_ref is not None:
+            position_ref = self.get_cartpole_position(pole_len, state_traj_ref)
+            cart_h_ref, cart_w_ref = 0.5, 1
+        else:
+            position_ref = np.zeros_like(position)
+            cart_h_ref, cart_w_ref = 0, 0
+        assert position.shape[0] == position_ref.shape[0], 'reference trajectory should have the same length'
+
+        # set figure
+        fig = plt.figure()
+        ax = fig.add_subplot(111, autoscale_on=False, xlim=(-3, 3), ylim=(-3, 3), ) # Original: xlim=(-10, 10), ylim=(-5, 5)
+        ax.set_aspect('equal')
+        # ax.grid()
+        ax.set_ylabel('Vertical (m)')
+        ax.set_xlabel('Horizontal (m)')
+        ax.set_title(title)
+        # ax.tick_params(right= False,top= False,left= False, bottom= False, labelbottom=False, labelleft=False)
+        time_template = 'time = %.1fs'
+        time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+
+        # set lines
+        cart_h, cart_w = 0.5, 1
+        line, = ax.plot([], [], lw=3)
+        line_ref, = ax.plot([], [], color='gray', lw=3, alpha=0.3)
+        patch = patches.Rectangle((0, 0), cart_w, cart_h, fc='y')
+        patch_ref = patches.Rectangle((0, 0), cart_w_ref, cart_h_ref, fc='gray', alpha=0.3)
+
+        # customize
+        if state_traj_ref is not None:
+            plt.legend([line, line_ref], ['Reproduced', 'Demonstration'], ncol=1, loc='best',
+                       bbox_to_anchor=(0.4, 0.4, 0.6, 0.6))
+
+        def init():
+            line.set_data([], [])
+            line_ref.set_data([], [])
+            ax.add_patch(patch)
+            ax.add_patch(patch_ref)
+            ax.axhline(lw=2, c='k')
+            time_text.set_text('')
+            return line, line_ref, patch, patch_ref, time_text
+
+        def animate(i):
+            seg_x = [position[i, 0], position[i, 2]]
+            seg_y = [position[i, 1], position[i, 3]]
+            line.set_data(seg_x, seg_y)
+
+            seg_x_ref = [position_ref[i, 0], position_ref[i, 2]]
+            seg_y_ref = [position_ref[i, 1], position_ref[i, 3]]
+            line_ref.set_data(seg_x_ref, seg_y_ref)
+
+            patch.set_xy([position[i, 0] - cart_w / 2, position[i, 1] - cart_h / 2])
+            patch_ref.set_xy([position_ref[i, 0] - cart_w / 2, position_ref[i, 1] - cart_h / 2])
+
+            time_text.set_text(time_template % (i * dt))
+
+            return line, line_ref, patch, patch_ref, time_text
+
+        ani = animation.FuncAnimation(fig, animate, np.size(state_traj, 0),
+                                      interval=50, init_func=init)
+
+        if save_option != 0:
+            # # For .mp4
+            # Writer = animation.writers['ffmpeg']
+            # writer = Writer(fps=10, metadata=dict(artist='Me'), bitrate=-1)
+            # ani.save('./videos/'+title + '.mp4', writer=writer, dpi=300)
+            # # ani.save(title + '.mp4', writer=writer, dpi=300)
+            # print('save_success')
+
+            # For .gif
+            writer = animation.PillowWriter(fps=10)
+            ani.save('Cart-Pole_' + title + '.gif', writer=writer, dpi=300)
+            print('save_success')
+
+
+        plt.show()
+
+    def get_cartpole_position(self, pole_len, state_traj):
+        position = np.zeros((state_traj.shape[0], 4))
+        for t in range(state_traj.shape[0]):
+            x = state_traj[t, 0]
+            q = state_traj[t, 1]
+            cart_pos_x = x
+            cart_pos_y = 0
+            pole_pos_x = x + pole_len * sin(q)
+            pole_pos_y = -pole_len * cos(q)
+            position[t, :] = np.array([cart_pos_x, cart_pos_y, pole_pos_x, pole_pos_y])
+        return position
 
 # quadrotor (UAV) environment
 class Quadrotor:
