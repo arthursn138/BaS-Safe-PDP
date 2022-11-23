@@ -14,15 +14,15 @@ import random
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.BaS_CartPole()
 mc, mp, l = 0.5, 0.5, 1
-max_x = 1       # CONSTRAINT / OBSTACLE FOR BAS
-max_u = 1e10    # CONTROL LIMIT
+max_x = 0.8        # CONSTRAINT / OBSTACLE FOR BAS
+max_u = 4          # CONTROL LIMIT
 env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x)
-wx, wq, wdx, wdq, wz, wu = 0.1, 1, 0.1, 0.1, 0.1, 0.01
+wx, wq, wdx, wdq, wz, wu = 0.3, 1, 0.1, 0.1, 0.1, 0.1
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wz=wz, cart_limit=max_x, wu=wu)
 # Not used, since gamma = 0
 env.initConstraints(max_u=max_u, max_x=max_x)
 dt = 0.12
-horizon = 25
+horizon = 30
 init_state = [0, 0, 0, 0, 0]
 dyn = env.X + dt * env.f
 # --------------------------- create Safe PDP SPlan object ----------------------------------------
@@ -46,7 +46,7 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
+env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -57,6 +57,7 @@ print('constrained cost', coc_sol['cost'])
 # TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO?)
 
 # # --------------------------- Barrier States Augmentation ----------------------------------------
+# TODO: MAKE IT MODULAR!!!!
 # cart_limit = max_x
 # bas = env
 # # Create obstacles and barrier functions
@@ -77,7 +78,7 @@ print('constrained cost', coc_sol['cost'])
 # # SE ENSEBAR MTO (40MIN MAXIMO) METE DIRETÃO NO NASCIMENV UM CTRL C+V DO CARTPOLE PRA CARTPOLE_BAS, E SÓ ENFIA A FUNCAO LÁ NA MAO MEMO
 #
 #
-
+# TODO: MAKE IT MODULAR!!!!
 # --------------------------- Safe Motion SPlan ----------------------------------------
 # set the policy as polynomial
 n_poly = 10
@@ -85,7 +86,7 @@ planner.setPolyTraj(horizon=horizon, n_poly=n_poly)
 # set the initial condition
 nn_seed = None
 init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial condition
-# nn_seed = 200 # e.g. 200,300, 400, 500
+# nn_seed = 200 # e.g. 200, 300, 400, 500
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
@@ -142,4 +143,6 @@ for k in range(int(max_iter)):
 times = np.linspace(0, dt*horizon-dt, horizon+1)
 plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, max_x)
 plt.show()
-env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0, title='BaS-Plan(loose safety enforcement)')
+env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0, title='BaS-Learned Motion (barrier at 0.8)')
+
+# TODO: Add cart limits in the animation
