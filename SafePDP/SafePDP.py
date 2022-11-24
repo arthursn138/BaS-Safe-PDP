@@ -1042,7 +1042,7 @@ class CSysOPT:
         self.ddCBxx_final_fn = casadi.Function('ddCBxx_final_fn', [self.state], [ddCBxx_final])
 
     # one step to compute gradient descent
-    def step(self, init_state, horizon, control_auxvar_value, damping_flag=False, damping_lambda=0.001):
+    def step(self, init_state, horizon, cart_limit, control_auxvar_value, damping_flag=False, damping_lambda=0.001):
         # in case of not differentiating the system
         if not hasattr(self, 'ddCBxx_final_fn'):
             self.diffSys()
@@ -1054,6 +1054,7 @@ class CSysOPT:
         # at the same time obtain the differential matrices of the system
         state_traj = [init_state]
         control_traj = []
+        h = [init_state[4]]              # BaS
         cost_barrier_value = 0
         cost_value = 0
         Fx = []
@@ -1065,7 +1066,10 @@ class CSysOPT:
         CBee = []
         for t in range(horizon):
             curr_x = state_traj[t]
+            curr_h = cart_limit ** 2 - curr_x[0] **2           # BaS
             next_x = self.controlled_dyn_fn(t, curr_x, control_auxvar_value).full().flatten()
+            # h = safety_func(curr_x[0])               # BaS
+            next_h = cart_limit ** 2 - next_x[0] ** 2  # BaS
             curr_u = self.control_fn(t, curr_x, control_auxvar_value).full().flatten()
             curr_Fx = self.dfx_fn(t, curr_x, control_auxvar_value).full()
             curr_Fe = self.dfe_fn(t, curr_x, control_auxvar_value).full()
@@ -1077,6 +1081,7 @@ class CSysOPT:
             cost_barrier_value += self.controlled_path_cb_fn(t, curr_x, control_auxvar_value).full()
             cost_value += self.path_cost_fn(curr_x, curr_u).full()
             state_traj += [next_x]
+            h += [next_h]
             control_traj += [curr_u]
             Fx += [curr_Fx]
             Fe += [curr_Fe]
@@ -1086,6 +1091,7 @@ class CSysOPT:
             CBee += [curr_CBee]
             CBxe += [curr_CBxe]
         curr_x = state_traj[-1]
+        curr_h = h[-1]          # BaS
         CBxx += [self.ddCBxx_final_fn(curr_x).full()]
         CBx += [self.dCBx_final_fn(curr_x).full()]
         cost_barrier_value += self.controlled_final_cb_fn(curr_x)
@@ -1126,10 +1132,10 @@ class CSysOPT:
         grad_control_auxvar = 0.5 * np.linalg.inv(W[0]) @ w[0]
 
         return cost_barrier_value, cost_value, grad_control_auxvar.flatten(), np.array(state_traj), np.array(
-            control_traj),
+            control_traj), np.array(h),
 
     # integrating system given the initial condition and control function parameter (which is part of step method)
-    def integrateSys(self, init_state, horizon, control_auxvar_value):
+    def integrateSys(self, init_state, horizon, cart_limit, control_auxvar_value):
         # in case of not differentating the system
         if not hasattr(self, 'ddCBxx_final_fn'):
             self.diffSys()
@@ -1140,6 +1146,7 @@ class CSysOPT:
         # integrate the system to obtain the state trajectory based on the current control_auxvar_value
         # at the same time obtain the differential matrices of the system
         state_traj = [init_state]
+        h = [init_state[4]]             # BaS
         control_traj = []
         cost_barrier_value = 0
         cost_value = 0
@@ -1152,7 +1159,9 @@ class CSysOPT:
         CBee = []
         for t in range(horizon):
             curr_x = state_traj[t]
+            curr_h = cart_limit ** 2 - curr_x[0] ** 2  # BaS
             next_x = self.controlled_dyn_fn(t, curr_x, control_auxvar_value).full().flatten()
+            next_h = cart_limit ** 2 - next_x[0] ** 2  # BaS
             curr_u = self.control_fn(t, curr_x, control_auxvar_value).full().flatten()
             curr_Fx = self.dfx_fn(t, curr_x, control_auxvar_value).full()
             curr_Fe = self.dfe_fn(t, curr_x, control_auxvar_value).full()
@@ -1164,6 +1173,7 @@ class CSysOPT:
             cost_barrier_value += self.controlled_path_cb_fn(t, curr_x, control_auxvar_value).full()
             cost_value += self.path_cost_fn(curr_x, curr_u).full()
             state_traj += [next_x]
+            h += [next_h]
             control_traj += [curr_u]
             Fx += [curr_Fx]
             Fe += [curr_Fe]
@@ -1173,6 +1183,7 @@ class CSysOPT:
             CBee += [curr_CBee]
             CBxe += [curr_CBxe]
         curr_x = state_traj[-1]
+        curr_h = h[-1]              # BaS
         CBxx += [self.ddCBxx_final_fn(curr_x).full()]
         CBx += [self.dCBx_final_fn(curr_x).full()]
         cost_barrier_value += self.controlled_final_cb_fn(curr_x)

@@ -628,7 +628,7 @@ class BaS_CartPole:
     def __init__(self, project_name='BaS-augmented-cart-pole-system'):
         self.project_name = project_name
 
-    def initDyn(self, mc=None, mp=None, l=None, cart_limit=1):
+    def initDyn(self, mc=None, mp=None, l=None, cart_limit=1, gamma=0):
         # set the global parameters
         g = 9.81
 
@@ -662,9 +662,25 @@ class BaS_CartPole:
                 self.mc + self.mp) * g * sin(
             self.q)) / (
                       self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))  # acceleration of theta
-        # AJEITAR UMA MANEIRA DE ENFIAR QLQ h AO INVÉS DE SÓ ESSE
-        z = 1/(cart_limit ** 2 - self.x ** 2)
-        self.f = vertcat(self.dx, self.dq, ddx, ddq, z)  # continuous dynamics
+        self.fminus = horzcat(self.dx, self.dq, ddx, ddq)  # continuous dynamics
+
+        # # Get the gradients
+        # dyn_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.fminus])
+        # dfx = jacobian(dyn_fn(self.X, self.U), self.X)
+        # # self.dfx_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.dfx])
+        # dfu = jacobian(dyn_fn(self.X, self.U), self.U)
+        # # self.dfu_fn = casadi.Function('dfu_fn', [self.X, self.U], [self.dfu])
+
+        # BaS part:
+        # TODO Make it modular - in a way we don't need to enter the function by hand for each dynamics
+        self.h = cart_limit ** 2 - self.x ** 2      # Safety function
+        self.hx = -2 * self.x
+        self.B = 1/self.h                           # Barrier
+        self.dB = -1/self.h ** 2                    # Barrier derivative
+        self.z = self.B                                  # Barrier State
+        dz = self.dB * self.fminus * self.hx - gamma*(self.z - self.B)    # BaS derivative
+        self.dz = sum(horzsplit(dz))
+        self.f = vertcat(self.dx, self.dq, ddx, ddq, self.dz)                     # Augmented Continuous Dynamics
 
     def initCost(self, wx=None, wq=None, wdx=None, wdq=None, wz=0.01, cart_limit=1, wu=0.001):
         # declare system parameters
@@ -702,7 +718,7 @@ class BaS_CartPole:
 
         X_goal = [0.0, math.pi, 0.0, 0.0]
 
-        # AQUI TBM TEM QUE ARRANJAR UM JEITO MELHOR DE ENFIAR QLQ h
+        # TODO Make it modular - in a way we don't need to enter the function by hand for each dynamics
         zf = 1 / (cart_limit ** 2 - X_goal[0] ** 2)
 
         X_goal += [zf]

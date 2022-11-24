@@ -14,16 +14,17 @@ import random
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.BaS_CartPole()
 mc, mp, l = 0.5, 0.5, 1
-max_x = 0.8        # CONSTRAINT / OBSTACLE FOR BAS
-max_u = 4          # CONTROL LIMIT
-env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x)
+max_x = 1        # CONSTRAINT / OBSTACLE FOR BAS
+max_u = 1e100          # CONTROL LIMIT
+env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x, gamma=0)
 wx, wq, wdx, wdq, wz, wu = 0.3, 1, 0.1, 0.1, 0.1, 0.1
+# wx, wq, wdx, wdq, wz, wu = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wz=wz, cart_limit=max_x, wu=wu)
 # Not used, since gamma = 0
 env.initConstraints(max_u=max_u, max_x=max_x)
 dt = 0.12
 horizon = 30
-init_state = [0, 0, 0, 0, 0]
+init_state = [0, 0, 0, 0, 1/max_x**2]
 dyn = env.X + dt * env.f
 # --------------------------- create Safe PDP SPlan object ----------------------------------------
 planner = SafePDP.CSysOPT()
@@ -46,7 +47,8 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver')
+env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver on BaS-'
+                                                                                                 'augmented system')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -90,7 +92,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 3000
+max_iter = 3000 # TODO Implement convergence break
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -100,8 +102,9 @@ lr = 1e-1
 current_parameter = init_parameter
 for k in range(int(max_iter)):
     # one iteration of PDP
-    loss_barrier, loss, dp, state_traj, control_traj, = planner.step(init_state=init_state, horizon=horizon,
-                                                                     control_auxvar_value=current_parameter)
+    loss_barrier, loss, dp, state_traj, control_traj, h, = planner.step(init_state=init_state, horizon=horizon,
+                                                                        cart_limit=max_x,
+                                                                        control_auxvar_value=current_parameter)
     # storage
     loss_barrier_trace += [loss_barrier]
     loss_trace += [loss]
@@ -115,22 +118,23 @@ for k in range(int(max_iter)):
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
 # # save the results
-# if True:
-#     save_data = {'parameter_trace': parameter_trace,
-#                  'loss_trace': loss_trace,
-#                  'loss_barrier_trace': loss_barrier_trace,
-#                  'gamma': gamma,
-#                  'solved_trajectory': state_traj,
-#                  'solved_controls': control_traj,
-#                  'coc_sol': coc_sol,
-#                  'lr': lr,
-#                  'init_parameter': init_parameter,
-#                  'n_poly': n_poly,
-#                  'dt': dt,
-#                  'horizon': horizon
-#                  }
-#     np.save('./Results/BaS_Cartpole_firstTest.npy', save_data)                      # .npy
-#     sio.savemat('./Results/BaS_Cartpole_firstTest.mat', {'results': save_data})     # .mat
+if True:
+    save_data = {'parameter_trace': parameter_trace,
+                 'loss_trace': loss_trace,
+                 'loss_barrier_trace': loss_barrier_trace,
+                 'gamma': gamma,
+                 'solved_trajectory': state_traj,
+                 'solved_controls': control_traj,
+                 'barrier_function': h,
+                 'coc_sol': coc_sol,
+                 'learning_rate': lr,
+                 'init_parameter': init_parameter,
+                 'n_poly': n_poly,
+                 'dt': dt,
+                 'horizon': horizon
+                 }
+    np.save('./Results/BaS_Cartpole_Success_0.npy', save_data)                      # .npy
+    sio.savemat('./Results/BaS_Cartpole_Success_0.mat', {'results': save_data})     # .mat
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -141,8 +145,8 @@ for k in range(int(max_iter)):
 # plt.legend()
 # plt.show()
 times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, max_x)
+plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h, max_x)
 plt.show()
-env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0, title='BaS-Learned Motion (barrier at 0.8)')
+env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='BaS-Learned Motion (barrier at 1)')
 
 # TODO: Add cart limits in the animation
