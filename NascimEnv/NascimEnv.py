@@ -652,6 +652,7 @@ class BaS_CartPole:
             self.l = l
         self.dyn_auxvar = vcat(parameter)
 
+        # ------------- IMMACULATE DYNAMICS, DON'T CHANGE THIS!!!!------------------------
         # Declare system variables
         self.x, self.q, self.dx, self.dq, self.z = SX.sym('x'), SX.sym('q'), SX.sym('dx'), SX.sym('dq'), SX.sym('z')
         self.X = vertcat(self.x, self.q, self.dx, self.dq, self.z)
@@ -662,25 +663,73 @@ class BaS_CartPole:
                 self.mc + self.mp) * g * sin(
             self.q)) / (
                       self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))  # acceleration of theta
-        self.fminus = horzcat(self.dx, self.dq, ddx, ddq)  # continuous dynamics
+        self.fminus = vertcat(self.dx, self.dq, ddx, ddq)  # continuous dynamics
+        # ---------------------------------------------------------------------------------
 
-        # # Get the gradients
+
+        # ------------------- MISERABLE TRIAL OF DDX DYN SEPARATION ---------------------------
+        # f_ddx = (self.mp * sin(self.q) * (self.l * self.dq * self.dq + g * cos(self.q))) / (
+        #         self.mc + self.mp * sin(self.q) * sin(self.q))
+        # g_ddx = (self.U * (self.l * self.dq * self.dq + g * cos(self.q))) / (
+        #         self.mc + self.mp * sin(self.q) * sin(self.q))
+        # ddx = sum(horzsplit(horzcat(f_ddx, g_ddx)))
+        # --------------------------------------------------------------------------------------
+
+        # # ------------------ SEPARATING THE DYNAMICS ---------------------------------
+        # common_x = (self.l * (self.dq * self.dq) + (g * cos(self.q))) / (self.mc + (self.mp * sin(self.q) * sin(self.q)))
+        # g_ddx = self.U * common_x
+        # f_ddx = ddx - g_ddx
+        # f_ddx = sum(horzsplit(f_ddx))
+        # g_ddx = sum(horzsplit(g_ddx))
+        # new_ddx = sum(horzsplit(horzcat(f_ddx, g_ddx)))
+        #
+        # common_q = 1 / (self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))
+        # g_ddq = (-self.U * cos(self.q)) * common_q
+        # f_ddq = ddq - g_ddq
+        # f_ddq = sum(horzsplit(f_ddq))
+        # g_ddq = sum(horzsplit(g_ddq))
+        # new_ddq = sum(horzsplit(horzcat(f_ddq, g_ddq)))
+        # # -----------------------------------------------------------------------------
+
+        # -------------------- ESSE THETA DDOT TÁ CERTO ------------------------------
+        # f_ddq = (- self.mp * self.l * self.dq * self.dq * sin(self.q) * cos(self.q) - (
+        #         self.mc + self.mp) * g * sin(
+        #     self.q)) / (
+        #               self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))
+        # g_ddq = (-self.U * cos(self.q)) / (
+        #               self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))
+        # ddq = sum(horzsplit(horzcat(f_ddq, g_ddq)))
+        # ----------------------------------------------------------------------------
+
+
+        # #----------Get the gradients (NO NEED)------------------------------
         # dyn_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.fminus])
         # dfx = jacobian(dyn_fn(self.X, self.U), self.X)
         # # self.dfx_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.dfx])
         # dfu = jacobian(dyn_fn(self.X, self.U), self.U)
         # # self.dfu_fn = casadi.Function('dfu_fn', [self.X, self.U], [self.dfu])
+        # ---------------------------------------------- -----------------------
 
-        # BaS part:
+        # -------------------------- BaS and dynamics augmentation  ---------------------------------
         # TODO Make it modular - in a way we don't need to enter the function by hand for each dynamics
+
         self.h = cart_limit ** 2 - self.x ** 2      # Safety function
-        self.hx = -2 * self.x
+        self.hx = horzcat(-2 * self.x, 0, 0, 0)
         self.B = 1/self.h                           # Barrier
-        self.dB = -1/self.h ** 2                    # Barrier derivative
-        self.z = self.B                                  # Barrier State
-        dz = self.dB * self.fminus * self.hx - gamma*(self.z - self.B)    # BaS derivative
-        self.dz = sum(horzsplit(dz))
-        self.f = vertcat(self.dx, self.dq, ddx, ddq, self.dz)                     # Augmented Continuous Dynamics
+        self.dB = -self.h ** (-2)                   # Barrier derivative
+        self.z = self.B                             # Barrier State
+        self.dz = self.dB * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
+        # dz = (-(cart_limit ** 2 - self.x ** 2) ** (-2)) * (-2 * self.x) * self.fminus        # BY HAND
+        self.f = vertcat(self.dx, self.dq, ddx, ddq, self.dz)  # continuous dynamics
+
+
+        # ----------------- SEPARATE DYNAMICS (xdot = f(x) + g(x)*u) AUGMENTATION ---------------------
+        # self.f_fminus = vertcat(self.dx, self.dq, f_ddx, f_ddq)  # continuous SEPARATE DYNAMICS (x = f + g*u)
+        # dz = self.dB * self.hx * self.f_fminus       # BaS derivative - SEPARATE DYNAMICS (x = f + g*u)
+        # self.dz = dz[0] + dz[1] + dz[2] + dz[3]
+        # self.f = vertcat(self.dx, self.dq, new_ddx, new_ddq, self.dz)      # Augmented Continuous SEPARATE (x = f + g*u) Dynamics
+        # ---------------------------------------------------------------------------------------------
+
 
     def initCost(self, wx=None, wq=None, wdx=None, wdq=None, wz=0.01, cart_limit=1, wu=0.001):
         # declare system parameters

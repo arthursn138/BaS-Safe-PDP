@@ -92,7 +92,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 3000 # TODO Implement convergence break
+max_iter = 1500 # TODO Implement convergence break [orig 3000]
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -133,8 +133,8 @@ if True:
                  'dt': dt,
                  'horizon': horizon
                  }
-    np.save('./Results/BaS_Cartpole_Success_0.npy', save_data)                      # .npy
-    sio.savemat('./Results/BaS_Cartpole_Success_0.mat', {'results': save_data})     # .mat
+    np.save('./Results/BaS_Cartpole_Testing_0.npy', save_data)                      # .npy
+    sio.savemat('./Results/BaS_Testing_0.mat', {'results': save_data})     # .mat
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -145,7 +145,7 @@ if True:
 # plt.legend()
 # plt.show()
 times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h, max_x)
+plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
 plt.show()
 env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='BaS-Learned Motion (barrier at 1)')
 
