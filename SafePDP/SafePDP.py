@@ -898,7 +898,7 @@ class CSysOPT:
             self.n_final_inequ_cstr = 0
 
     # convert the constrained problem into an unconstrained problem
-    def convert2BarrierOC(self, gamma=1e-2):
+    def convert2BarrierOC(self, gamma=1e-2): # ARTHUR (reverted back)
 
         # in case of not has path and final constraints
         if not hasattr(self, 'path_inequ_cstr'):
@@ -911,10 +911,10 @@ class CSysOPT:
         # natural log barrier for the inequality path constraints
         path_inequ_barrier = 0
         if self.n_path_inequ_cstr == 1:
-            path_inequ_barrier += -log(-self.path_inequ_cstr)
+            path_inequ_barrier += -log(-self.path_inequ_cstr) # ARTHUR (reverted back)
         else:
             for k in range(self.n_path_inequ_cstr):
-                path_inequ_barrier += -log(-self.path_inequ_cstr[k])
+                path_inequ_barrier += -log(-self.path_inequ_cstr[k])  # ARTHUR (reverted back)
 
         # overall cost plus the barrier in path
         self.path_costbarrier = self.path_cost + gamma * path_inequ_barrier
@@ -924,10 +924,10 @@ class CSysOPT:
         # natural log barrier for the inequality final constraints
         final_inequ_barrier = 0
         if self.n_final_inequ_cstr == 1:
-            final_inequ_barrier += -log(-self.final_inequ_cstr)
+            final_inequ_barrier += -log(-self.final_inequ_cstr)  # ARTHUR (reverted back)
         else:
             for k in range(self.n_final_inequ_cstr):
-                final_inequ_barrier += -log(-self.final_inequ_cstr[k])
+                final_inequ_barrier += -log(-self.final_inequ_cstr[k]) # ARTHUR (reverted back)
 
         # overall cost plus the barrier at final
         self.final_costbarrier = self.final_cost + gamma * final_inequ_barrier
@@ -1054,7 +1054,7 @@ class CSysOPT:
         # at the same time obtain the differential matrices of the system
         state_traj = [init_state]
         control_traj = []
-        h = [init_state[4]]              # BaS
+        h = [cart_limit ** 2 - init_state[0] ** 2]               # BaS
         cost_barrier_value = 0
         cost_value = 0
         Fx = []
@@ -1066,10 +1066,12 @@ class CSysOPT:
         CBee = []
         for t in range(horizon):
             curr_x = state_traj[t]
-            curr_h = cart_limit ** 2 - curr_x[0] **2           # BaS
+            curr_h = cart_limit ** 2 - curr_x[0] ** 2           # BaS
             next_x = self.controlled_dyn_fn(t, curr_x, control_auxvar_value).full().flatten()
+            # print('NEXT_X: ', next_x)
             # h = safety_func(curr_x[0])               # BaS
-            next_h = cart_limit ** 2 - next_x[0] ** 2  # BaS
+            next_h = (cart_limit ** 2 - next_x[0] ** 2)  # BaS
+            # print('NEXT_h: ', next_h)
             curr_u = self.control_fn(t, curr_x, control_auxvar_value).full().flatten()
             curr_Fx = self.dfx_fn(t, curr_x, control_auxvar_value).full()
             curr_Fe = self.dfe_fn(t, curr_x, control_auxvar_value).full()
@@ -1082,6 +1084,7 @@ class CSysOPT:
             cost_value += self.path_cost_fn(curr_x, curr_u).full()
             state_traj += [next_x]
             h += [next_h]
+            # print('h: ', size(h))
             control_traj += [curr_u]
             Fx += [curr_Fx]
             Fe += [curr_Fe]
@@ -1146,7 +1149,7 @@ class CSysOPT:
         # integrate the system to obtain the state trajectory based on the current control_auxvar_value
         # at the same time obtain the differential matrices of the system
         state_traj = [init_state]
-        h = [init_state[4]]             # BaS
+        h = cart_limit ** 2 - init_state[0] ** 2             # BaS
         control_traj = []
         cost_barrier_value = 0
         cost_value = 0

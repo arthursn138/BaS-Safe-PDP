@@ -14,8 +14,8 @@ import random
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.BaS_CartPole()
 mc, mp, l = 0.5, 0.5, 1
-max_x = 1        # CONSTRAINT / OBSTACLE FOR BAS
-max_u = 1e100          # CONTROL LIMIT
+max_x = 0.5        # CONSTRAINT / OBSTACLE FOR BAS ----- PROBLEMATIC AROUND 0.9!!! -> 0.91 = BREACH OF SAFETY!!!!!
+max_u = 4        # CONTROL LIMIT
 env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x, gamma=0)
 wx, wq, wdx, wdq, wz, wu = 0.3, 1, 0.1, 0.1, 0.1, 0.1
 # wx, wq, wdx, wdq, wz, wu = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
@@ -47,8 +47,8 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver on BaS-'
-                                                                                                 'augmented system')
+# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver on BaS-'
+#                                                                                                  'augmented system')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -59,27 +59,6 @@ env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save
 # TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO?)
 
 # # --------------------------- Barrier States Augmentation ----------------------------------------
-# TODO: MAKE IT MODULAR!!!!
-# cart_limit = max_x
-# bas = env
-# # Create obstacles and barrier functions
-# h = cart_limit ** 2 - bas.f[0] ** 2
-# h_fn = casadi.Function('h_fn', [bas.X], [h])
-# B = 1/h
-# B_fn = casadi.Function('B_fn', [bas.X], [B])
-# # Augment the dynamics / State-space
-# z = SX.sym('z')
-# bas_states = vertcat(bas.X, z) # NA VDD TEM QUE STACKAR O X0 E XF
-# # AÍ COMO É QUE STACKA O B EMBAIXO DAS OUTRAS EQ DE DYN SEM SER NA MÃO????
-#
-# # bas_dyn = vertcat(bas.f, B_fn)
-# # bas_dyn_disc = bas.X + dt * bas_dyn
-#
-# # FODAC, FAZ NA MÃO MEMO SÓ PRA TER ALGUMA COISA, DEPOIS PENSA EM COMO FAZER AUTOMATICAMENTE
-#
-# # SE ENSEBAR MTO (40MIN MAXIMO) METE DIRETÃO NO NASCIMENV UM CTRL C+V DO CARTPOLE PRA CARTPOLE_BAS, E SÓ ENFIA A FUNCAO LÁ NA MAO MEMO
-#
-#
 # TODO: MAKE IT MODULAR!!!!
 # --------------------------- Safe Motion SPlan ----------------------------------------
 # set the policy as polynomial
@@ -92,7 +71,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 1500 # TODO Implement convergence break [orig 3000]
+max_iter = 1500             # TODO Implement convergence break [orig 3000]
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -100,6 +79,8 @@ lr = 1e-1
 
 # start safe motion planning
 current_parameter = init_parameter
+safety = []
+safe_aux = []
 for k in range(int(max_iter)):
     # one iteration of PDP
     loss_barrier, loss, dp, state_traj, control_traj, h, = planner.step(init_state=init_state, horizon=horizon,
@@ -117,6 +98,21 @@ for k in range(int(max_iter)):
     if k % 100 == 0:
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
+    # Check safety violations
+    for i in range(len(h)):
+        if 1/h[i] < 1e-10:
+            safe_aux += [1]
+        else:
+            safe_aux += [0]
+
+    if sum(safe_aux) != 0:
+        safety += [1]
+    else:
+        safety += [0]
+
+print('There were ', sum(safety), ' iterations in which safety was violated')
+
+
 # # save the results
 if True:
     save_data = {'parameter_trace': parameter_trace,
@@ -126,6 +122,8 @@ if True:
                  'solved_trajectory': state_traj,
                  'solved_controls': control_traj,
                  'barrier_function': h,
+                 'safety': safety,
+                 'cart_lim': max_x,
                  'coc_sol': coc_sol,
                  'learning_rate': lr,
                  'init_parameter': init_parameter,
@@ -133,8 +131,8 @@ if True:
                  'dt': dt,
                  'horizon': horizon
                  }
-    np.save('./Results/BaS_Cartpole_Testing_0.npy', save_data)                      # .npy
-    sio.savemat('./Results/BaS_Testing_0.mat', {'results': save_data})     # .mat
+    np.save('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.npy', save_data)                      # .npy
+    sio.savemat('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.mat', {'results': save_data})     # .mat
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -144,9 +142,11 @@ if True:
 # plt.fill_between(np.arange(0, horizon), max_u, -max_u, color='green', alpha=0.2)
 # plt.legend()
 # plt.show()
-times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
-plt.show()
-env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='BaS-Learned Motion (barrier at 1)')
+
+# times = np.linspace(0, dt*horizon-dt, horizon+1)
+# plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
+# plt.show()
+
+# env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='BaS-Learned Motion (barrier at ' + str(max_x))
 
 # TODO: Add cart limits in the animation

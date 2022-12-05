@@ -19,17 +19,27 @@ def plotcartpole(x0, xf, T, X, U, h, cart_limit):
     ax[1, 0].title.set_text(r'$\dot{x}$')
 
     ax[1, 1].plot(T, X[3, :])
-    ax[1, 1].title.set_text(r'$\dot{\theta}$')
+    # ax[1, 1].title.set_text(r'$\dot{\theta}$')
 
     inv_h = []
-    for i in range(len(X[1,:])):
+    for i in range(len(X[1, :])):
         inv_h += [1 / (cart_limit ** 2 - X[0, i] ** 2)]
 
-    fig_bas, ax_bas = plt.subplots()
-    ax_bas.plot(T, X[4, :], label='BaS')
-    ax_bas.plot(T, inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
-    ax_bas.set_title('BaS and safety function (h)')
-    ax_bas.legend()
+    if len(X) > 4:
+        fig_bas, ax_bas = plt.subplots()
+        ax_bas.plot(T, X[4, :], label='BaS')
+        ax_bas.plot(T, inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
+        ax_bas.plot(T, np.zeros(T.shape[0]))
+        ax_bas.set_title('BaS and safety function (h)')
+        ax_bas.legend()
+        # GAMBIARRA AQUI EM BAIXO!!!! O NEGÓCIO CERTO TÁ AQUI EM CIMA, SÓ DESCOMENTAR
+        # ax_bas.plot(T, inv_h, label='BaS')
+        # ax_bas.set_title('BaS')
+    else :
+        fig_bas, ax_bas = plt.subplots()
+        ax_bas.plot(T, inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
+        ax_bas.plot(T, np.zeros(T.shape[0]))
+        ax_bas.set_title('BaS and safety function (h)')
 
     # fig_u, ax_u = plt.subplots()
     # ax_u.plot(T[0:-1], U[0, :])

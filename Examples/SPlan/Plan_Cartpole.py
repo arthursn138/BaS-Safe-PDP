@@ -8,6 +8,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 import time
 import random
+from Plottings import plot_cartpole
 
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.CartPole()
@@ -64,7 +65,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 3000
+max_iter = 1500 # Original: 3000
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -72,10 +73,13 @@ lr = 1e-1
 
 # start safe motion planning
 current_parameter = init_parameter
+safety = []
+safe_aux = []
 for k in range(int(max_iter)):
     # one iteration of PDP
-    loss_barrier, loss, dp, state_traj, control_traj, = planner.step(init_state=init_state, horizon=horizon,
-                                                                     control_auxvar_value=current_parameter)
+    loss_barrier, loss, dp, state_traj, control_traj, h, = planner.step(init_state=init_state, horizon=horizon,
+                                                                        cart_limit=max_x,
+                                                                        control_auxvar_value=current_parameter)
     # storage
     loss_barrier_trace += [loss_barrier]
     loss_trace += [loss]
@@ -88,17 +92,34 @@ for k in range(int(max_iter)):
     if k % 100 == 0:
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
-# # save the results
-# if True:
-#     save_data = {'parameter_trace': parameter_trace,
-#                  'loss_trace': loss_trace,
-#                  'loss_barrier_trace': loss_barrier_trace,
-#                  'gamma': gamma,
-#                  'coc_sol': coc_sol,
-#                  'lr': lr,
-#                  'init_parameter': init_parameter,
-#                  'n_poly': n_poly}
-#     np.save('./Results/Plan_Cartpole_trial_1.npy', save_data)
+    # Check safety violations
+    for i in range(len(h)):
+        if h[i] < 1e-10:
+            safe_aux += [1]
+        else:
+            safe_aux += [0]
+
+    if sum(safe_aux) != 0:
+        safety += [1]
+    else:
+        safety += [0]
+
+print('There were ', sum(safety), ' iterations in which safety was violated')
+
+# save the results
+if True:
+    save_data = {'parameter_trace': parameter_trace,
+                 'loss_trace': loss_trace,
+                 'loss_barrier_trace': loss_barrier_trace,
+                 'gamma': gamma,
+                 'coc_sol': coc_sol,
+                 'inverse_BaS': h,
+                 'safety': safety,
+                 'lr': lr,
+                 'init_parameter': init_parameter,
+                 'n_poly': n_poly}
+    np.save('./Results/Plan_Cartpole_Arthur_0.npy', save_data)
+    sio.savemat('./Results/Plan_Cartpole_Arthur_0.mat', {'results': save_data})
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -108,4 +129,9 @@ for k in range(int(max_iter)):
 # plt.fill_between(np.arange(0, horizon), max_u, -max_u, color='green', alpha=0.2)
 # plt.legend()
 # plt.show()
+
+times = np.linspace(0, dt*horizon-dt, horizon+1)
+plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
+plt.show()
+
 env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0, title='Learned Motion (unsafe)')

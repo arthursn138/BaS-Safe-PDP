@@ -485,6 +485,8 @@ class CartPole:
 
         X_goal = [0.0, math.pi, 0.0, 0.0]
 
+        self.xf = X_goal
+
         self.path_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
                 self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + wu * (self.U * self.U)
         self.final_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
@@ -719,7 +721,8 @@ class BaS_CartPole:
         self.dB = -self.h ** (-2)                   # Barrier derivative
         self.z = self.B                             # Barrier State
         self.dz = self.dB * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
-        # dz = (-(cart_limit ** 2 - self.x ** 2) ** (-2)) * (-2 * self.x) * self.fminus        # BY HAND
+        # self.dz = (-self.z ** 2) * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
+        # self.dz = (-(cart_limit ** 2 - self.x ** 2) ** (-2)) * horzcat((-2 * self.x), 0, 0, 0) @ self.fminus        # BY HAND
         self.f = vertcat(self.dx, self.dq, ddx, ddq, self.dz)  # continuous dynamics
 
 
@@ -828,7 +831,7 @@ class BaS_CartPole:
         horizon = position.shape[0]
         if state_traj_ref is not None:
             position_ref = self.get_cartpole_position(pole_len, state_traj_ref)
-            cart_h_ref, cart_w_ref = 0.5, 1
+            cart_h_ref, cart_w_ref = 0.5, 0.5
         else:
             position_ref = np.zeros_like(position)
             cart_h_ref, cart_w_ref = 0, 0
@@ -847,7 +850,7 @@ class BaS_CartPole:
         time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
 
         # set lines
-        cart_h, cart_w = 0.5, 1
+        cart_h, cart_w = 0.5, 0.5
         line, = ax.plot([], [], lw=3)
         line_ref, = ax.plot([], [], color='gray', lw=3, alpha=0.3)
         patch = patches.Rectangle((0, 0), cart_w, cart_h, fc='y')
