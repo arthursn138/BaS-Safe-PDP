@@ -28,11 +28,11 @@ def plotcartpole(x0, xf, T, X, U, h, cart_limit):
         y += [inv_h[i] - X[4, i]]
 
     fig_bas, ax_bas = plt.subplots()
-    ax_bas.plot(T, X[4, :], label='BaS')
+    ax_bas.plot(T, X[4, :], label='BaS (X(4))')
     ax_bas.plot(T, inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
     ax_bas.plot(T, np.zeros(T.shape[0]))
-    ax_bas.set_title('BaS and safety function (h)')
-    ax_bas.plot(T, y, label='Difference (h - BaS)')
+    ax_bas.set_title('BaS vs reference')
+    ax_bas.plot(T, y, label=r'BaS error ($\frac{1}{h(x)} - $X(4))')
     ax_bas.legend()
 
     # fig_check, ax_check = plt.subplots()

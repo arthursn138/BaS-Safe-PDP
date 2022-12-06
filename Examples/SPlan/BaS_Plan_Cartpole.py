@@ -14,7 +14,7 @@ import random
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.BaS_CartPole()
 mc, mp, l = 0.5, 0.5, 1
-max_x = 0.8        # CONSTRAINT / OBSTACLE FOR BAS ----- PROBLEMATIC AROUND 0.9!!! -> 0.91 = BREACH OF SAFETY!!!!!
+max_x = 1        # CONSTRAINT / OBSTACLE FOR BAS ----- PROBLEMATIC AROUND 0.9!!! -> 0.91 = BREACH OF SAFETY!!!!!
 max_u = 4       # CONTROL LIMIT [original: 4]
 env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x, gamma=0)
 # wx, wq, wdx, wdq, wz, wu = 0.3, 1.5, 0.1, 0.1, 0.1, 0.1     # Worked beautifully before
@@ -28,7 +28,7 @@ horizon = 150        # Hassan: make 150 // orig 25(?), eu mudei pra 30
 init_state = [0, 0, 0, 0, 1/max_x**2]
 dyn = env.X + dt * env.f
 # # OVERWRITING THE BARRIER STATES NOW THAT THE SYSTEM GOT DISCRETIZED, FOR DEBUGGING:
-# # INDICATION THAT THE BAS AUGMENTATION CAN BE DONE OUTSIDE NASCIMENV!
+# # INDICATION THAT THE BAS AUGMENTATION CAN BE DONE OUTSIDE NASCIMENV! ---- Not so much.... doesn't work quite well here
 # env.dz = (-(max_x ** 2 - env.x ** 2) ** (-2)) * horzcat((-2 * env.x), 0, 0, 0) @ env.fminus
 # dyn[4] = env.z * dt + env.dz
 
@@ -80,7 +80,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 3000             # original 3000
+max_iter = 5000             # original 3000
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -123,7 +123,7 @@ for k in range(int(max_iter)):
     # Converge break
     if k != 0:
         converge = loss_trace[k-1] - loss_trace[k]
-        if 0 < converge < 10e-15:
+        if 0 < converge < 10e-5:
             print(' ')
             print('Previous loss:', loss_trace[k-1], '; Current loss: ', loss_trace[k], '; Loss difference: ', converge)
             print('Total # of iterations: ', k)
@@ -136,6 +136,8 @@ for k in range(int(max_iter)):
 
 print(' ')
 print('There were ', sum(safety), ' iterations in which safety was violated')
+print(' ')
+print('BARRIER AT:', max_x, '; WEIGHTS: diag(Q) = [',wx, ',', wq, ',', wdx, ',', wdq, ',', wz,']; R = ', wu, '; diag(S) = 20*Q' )
 
 
 # # save the results
@@ -173,8 +175,8 @@ times = np.linspace(0, dt*horizon-dt, horizon+1)
 plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
 plt.show()
 
-# Plot animation
-# env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0,
-#                    title='BaS-Learned Motion (barrier at ' + str(max_x))
+# # Plot animation
+# env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1,
+#                    title='BaS-Learned Motion (barrier at ' + str(max_x) + ')')
 
 # TODO: Add cart limits in the animation
