@@ -5,7 +5,7 @@ from casadi import *
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-load_data = sio.loadmat('./Results/SPlan_Cartpole_Arthur_lim_0.4.mat')
+load_data = sio.loadmat('./Results/BaS_Cartpole_Testing_lim_1.mat')
 traj = load_data['results']['solved_trajectory'][0, 0]
 
 # ctrl = load_data['results']['solved_controls'][0, 0]
@@ -17,9 +17,11 @@ traj = load_data['results']['solved_trajectory'][0, 0]
 # horizon = horizon.item()
 
 # FOR SPLAN ONLY, NEEDS TO COMMENT ABOVE
-h = load_data['results']['inverse_BaS'][0, 0]
-dt = 0.12
-horizon = 30
+h = load_data['results']['barrier_function'][0, 0]
+# dt = 0.12
+# horizon = 30
+dt = 0.02
+horizon = 150
 ctrl = np.linspace(0, dt*horizon-dt, horizon+1).T
 
 times = np.linspace(0, dt*horizon-dt, horizon+1)

@@ -14,18 +14,24 @@ import random
 # --------------------------- load environment ----------------------------------------
 env = NascimEnv.BaS_CartPole()
 mc, mp, l = 0.5, 0.5, 1
-max_x = 0.5        # CONSTRAINT / OBSTACLE FOR BAS ----- PROBLEMATIC AROUND 0.9!!! -> 0.91 = BREACH OF SAFETY!!!!!
-max_u = 4        # CONTROL LIMIT
+max_x = 0.8        # CONSTRAINT / OBSTACLE FOR BAS ----- PROBLEMATIC AROUND 0.9!!! -> 0.91 = BREACH OF SAFETY!!!!!
+max_u = 4       # CONTROL LIMIT [original: 4]
 env.initDyn(mc=mc, mp=mp, l=l, cart_limit=max_x, gamma=0)
-wx, wq, wdx, wdq, wz, wu = 0.3, 1, 0.1, 0.1, 0.1, 0.1
+# wx, wq, wdx, wdq, wz, wu = 0.3, 1.5, 0.1, 0.1, 0.1, 0.1     # Worked beautifully before
+wx, wq, wdx, wdq, wz, wu = 0.3, 1.5, 0.1, 0.1, 0.1, 0.015
 # wx, wq, wdx, wdq, wz, wu = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wz=wz, cart_limit=max_x, wu=wu)
 # Not used, since gamma = 0
 env.initConstraints(max_u=max_u, max_x=max_x)
-dt = 0.12
-horizon = 30
+dt = 0.02           # Hassan: make 0.02 // orig 0.12
+horizon = 150        # Hassan: make 150 // orig 25(?), eu mudei pra 30
 init_state = [0, 0, 0, 0, 1/max_x**2]
 dyn = env.X + dt * env.f
+# # OVERWRITING THE BARRIER STATES NOW THAT THE SYSTEM GOT DISCRETIZED, FOR DEBUGGING:
+# # INDICATION THAT THE BAS AUGMENTATION CAN BE DONE OUTSIDE NASCIMENV!
+# env.dz = (-(max_x ** 2 - env.x ** 2) ** (-2)) * horzcat((-2 * env.x), 0, 0, 0) @ env.fminus
+# dyn[4] = env.z * dt + env.dz
+
 # --------------------------- create Safe PDP SPlan object ----------------------------------------
 planner = SafePDP.CSysOPT()
 planner.setStateVariable(env.X)
@@ -34,7 +40,7 @@ planner.setDyn(dyn)
 planner.setPathCost(env.path_cost)
 planner.setFinalCost(env.final_cost)
 planner.setPathInequCstr(env.path_inequ)
-gamma = 0 ###### THIS IS VERY IMPORTANT: gamma = 0  means that we do not add any barrier at all! (to the cost function)
+gamma = 0 ###### THIS IS VERY IMPORTANT: gamma = 0  means that we will cancell the cost penalty (need gamma=0 for BaS)
 planner.convert2BarrierOC(gamma=gamma)
 
 # --------------------------- create COC object only for result comparison ----------------------------------------
@@ -47,8 +53,10 @@ coc.setFinalCost(planner.final_cost)
 coc.setPathInequCstr(planner.path_inequ_cstr)
 coc_sol = coc.ocSolver(init_state=init_state, horizon=horizon)
 print('constrained cost', coc_sol['cost'])
-# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=1, title='NLP Solver on BaS-'
+
+# env.play_animation(pole_len=2, dt=dt, state_traj=coc_sol['state_traj_opt'], save_option=0, title='NLP Solver on BaS-'
 #                                                                                                  'augmented system')
+
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
 # plt.plot(coc_sol['state_traj_opt'][:, 0], label='ct_cart_pos')
 # plt.fill_between(np.arange(0, horizon), 1, -1, color='red', alpha=0.2)
@@ -56,14 +64,15 @@ print('constrained cost', coc_sol['cost'])
 # plt.legend()
 # plt.show()
 
-# TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO?)
+# TODO: SOLVE WITH DDP AS BASELINE (MAYBE SUBSTITUTE ALTRO/NLP?)
 
-# # --------------------------- Barrier States Augmentation ----------------------------------------
-# TODO: MAKE IT MODULAR!!!!
+# ------------------------- Barrier States Augmentation --------------------------------------
+# TODO: MAKE IT MODULAR - ALL BAS STUFF IS IN THE NASCIMENV MODULE (BY HAND)!!!!
 # --------------------------- Safe Motion SPlan ----------------------------------------
 # set the policy as polynomial
 n_poly = 10
 planner.setPolyTraj(horizon=horizon, n_poly=n_poly)
+
 # set the initial condition
 nn_seed = None
 init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial condition
@@ -71,7 +80,7 @@ init_parameter = np.zeros(planner.n_control_auxvar)  # all zeros initial conditi
 # init_parameter = 0.1*np.random.randn(planner.n_control_auxvar)  # random initial condition
 
 # planning parameter setting
-max_iter = 1500             # TODO Implement convergence break [orig 3000]
+max_iter = 3000             # original 3000
 loss_barrier_trace, loss_trace = [], []
 parameter_trace = np.empty((max_iter, init_parameter.size))
 control_traj, state_traj = 0, 0
@@ -81,6 +90,7 @@ lr = 1e-1
 current_parameter = init_parameter
 safety = []
 safe_aux = []
+J = []
 for k in range(int(max_iter)):
     # one iteration of PDP
     loss_barrier, loss, dp, state_traj, control_traj, h, = planner.step(init_state=init_state, horizon=horizon,
@@ -96,11 +106,11 @@ for k in range(int(max_iter)):
 
     # print
     if k % 100 == 0:
-        print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
+        print('Iter #:', k, 'Loss:', loss)
 
-    # Check safety violations
-    for i in range(len(h)):
-        if 1/h[i] < 1e-10:
+    # Check safety violations while learning    # TODO Implement the same for success
+    for i in range(len(h)):                     # TODO [IMPORTANT] NOT h, x[4]!!!!
+        if 1/h[i] < 1e-15:
             safe_aux += [1]
         else:
             safe_aux += [0]
@@ -110,29 +120,44 @@ for k in range(int(max_iter)):
     else:
         safety += [0]
 
+    # Converge break
+    if k != 0:
+        converge = loss_trace[k-1] - loss_trace[k]
+        if 0 < converge < 10e-15:
+            print(' ')
+            print('Previous loss:', loss_trace[k-1], '; Current loss: ', loss_trace[k], '; Loss difference: ', converge)
+            print('Total # of iterations: ', k)
+            break
+        else:
+            if k == max_iter-1:
+                print(' ')
+                print('Convergence difference was greater than specified: ', converge)
+                print('Code ended due to maximum # of iterations allowed: ', k+1, ' iterations')
+
+print(' ')
 print('There were ', sum(safety), ' iterations in which safety was violated')
 
 
 # # save the results
-if True:
-    save_data = {'parameter_trace': parameter_trace,
-                 'loss_trace': loss_trace,
-                 'loss_barrier_trace': loss_barrier_trace,
-                 'gamma': gamma,
-                 'solved_trajectory': state_traj,
-                 'solved_controls': control_traj,
-                 'barrier_function': h,
-                 'safety': safety,
-                 'cart_lim': max_x,
-                 'coc_sol': coc_sol,
-                 'learning_rate': lr,
-                 'init_parameter': init_parameter,
-                 'n_poly': n_poly,
-                 'dt': dt,
-                 'horizon': horizon
-                 }
-    np.save('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.npy', save_data)                      # .npy
-    sio.savemat('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.mat', {'results': save_data})     # .mat
+# if True:
+#     save_data = {'parameter_trace': parameter_trace,
+#                  'loss_trace': loss_trace,
+#                  'loss_barrier_trace': loss_barrier_trace,
+#                  'gamma': gamma,
+#                  'solved_trajectory': state_traj,
+#                  'solved_controls': control_traj,
+#                  'barrier_function': h,
+#                  'safety': safety,
+#                  'cart_lim': max_x,
+#                  'coc_sol': coc_sol,
+#                  'learning_rate': lr,
+#                  'init_parameter': init_parameter,
+#                  'n_poly': n_poly,
+#                  'dt': dt,
+#                  'horizon': horizon
+#                  }
+#     np.save('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.npy', save_data)                      # .npy
+#     sio.savemat('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.mat', {'results': save_data})     # .mat
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -143,10 +168,13 @@ if True:
 # plt.legend()
 # plt.show()
 
-# times = np.linspace(0, dt*horizon-dt, horizon+1)
-# plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
-# plt.show()
+# Plot states over time
+times = np.linspace(0, dt*horizon-dt, horizon+1)
+plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
+plt.show()
 
-# env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='BaS-Learned Motion (barrier at ' + str(max_x))
+# Plot animation
+# env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=0,
+#                    title='BaS-Learned Motion (barrier at ' + str(max_x))
 
 # TODO: Add cart limits in the animation

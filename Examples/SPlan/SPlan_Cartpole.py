@@ -93,7 +93,7 @@ for k in range(int(max_iter)):
     if k % 100 == 0:
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
-    # Check safety violations
+    # Check safety violations                     # TODO [IMPORTANT] NOT h, x[4]!!!!
     for i in range(len(h)):
         if 1/h[i] < 1e-10:
             safe_aux += [1]
@@ -115,7 +115,7 @@ if True:
                  'gamma': gamma,
                  'coc_sol': coc_sol,
                  'solved_trajectory': state_traj,
-                 'inverse_BaS': h,      # SALVANDO SÓ UM ESCALAR!!!!!!
+                 'inverse_BaS': h,      # #TODO: Just for comparison
                  'safety': safety,
                  'cart_lim': max_x,
                  'lr': lr,

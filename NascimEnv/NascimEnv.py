@@ -654,7 +654,7 @@ class BaS_CartPole:
             self.l = l
         self.dyn_auxvar = vcat(parameter)
 
-        # ------------- IMMACULATE DYNAMICS, DON'T CHANGE THIS!!!!------------------------
+        # ------------- ORIGINAL AUTHOR'S DYNAMICS, DON'T CHANGE THIS!!!!------------------------
         # Declare system variables
         self.x, self.q, self.dx, self.dq, self.z = SX.sym('x'), SX.sym('q'), SX.sym('dx'), SX.sym('dq'), SX.sym('z')
         self.X = vertcat(self.x, self.q, self.dx, self.dq, self.z)
@@ -668,14 +668,6 @@ class BaS_CartPole:
         self.fminus = vertcat(self.dx, self.dq, ddx, ddq)  # continuous dynamics
         # ---------------------------------------------------------------------------------
 
-
-        # ------------------- MISERABLE TRIAL OF DDX DYN SEPARATION ---------------------------
-        # f_ddx = (self.mp * sin(self.q) * (self.l * self.dq * self.dq + g * cos(self.q))) / (
-        #         self.mc + self.mp * sin(self.q) * sin(self.q))
-        # g_ddx = (self.U * (self.l * self.dq * self.dq + g * cos(self.q))) / (
-        #         self.mc + self.mp * sin(self.q) * sin(self.q))
-        # ddx = sum(horzsplit(horzcat(f_ddx, g_ddx)))
-        # --------------------------------------------------------------------------------------
 
         # # ------------------ SEPARATING THE DYNAMICS ---------------------------------
         # common_x = (self.l * (self.dq * self.dq) + (g * cos(self.q))) / (self.mc + (self.mp * sin(self.q) * sin(self.q)))
@@ -693,48 +685,32 @@ class BaS_CartPole:
         # new_ddq = sum(horzsplit(horzcat(f_ddq, g_ddq)))
         # # -----------------------------------------------------------------------------
 
-        # -------------------- ESSE THETA DDOT TÁ CERTO ------------------------------
-        # f_ddq = (- self.mp * self.l * self.dq * self.dq * sin(self.q) * cos(self.q) - (
-        #         self.mc + self.mp) * g * sin(
-        #     self.q)) / (
-        #               self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))
-        # g_ddq = (-self.U * cos(self.q)) / (
-        #               self.l * self.mc + self.l * self.mp * sin(self.q) * sin(self.q))
-        # ddq = sum(horzsplit(horzcat(f_ddq, g_ddq)))
-        # ----------------------------------------------------------------------------
-
-
-        # #----------Get the gradients (NO NEED)------------------------------
-        # dyn_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.fminus])
-        # dfx = jacobian(dyn_fn(self.X, self.U), self.X)
-        # # self.dfx_fn = casadi.Function('dfx_fn', [self.X, self.U], [self.dfx])
-        # dfu = jacobian(dyn_fn(self.X, self.U), self.U)
-        # # self.dfu_fn = casadi.Function('dfu_fn', [self.X, self.U], [self.dfu])
-        # ---------------------------------------------- -----------------------
 
         # -------------------------- BaS and dynamics augmentation  ---------------------------------
         # TODO Make it modular - in a way we don't need to enter the function by hand for each dynamics
 
         self.h = cart_limit ** 2 - self.x ** 2      # Safety function
         self.hx = horzcat(-2 * self.x, 0, 0, 0)
-        self.B = 1/self.h                           # Barrier
-        self.dB = -self.h ** (-2)                   # Barrier derivative
-        self.z = self.B                             # Barrier State
-        self.dz = self.dB * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
-        # self.dz = (-self.z ** 2) * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
+        self.B = 1/self.h                           # Barrier --- B(x) = beta(x)
+        self.dB = -self.h ** (-2)                   # Barrier derivative --- dB(x)/dh = dbeta(x)
+        self.z = self.B                             # Barrier State --- # z = Beta(x) = B(x)
+
+        # dz/dt = dbeta/dt = dbeta/dh * dh/dx * dx/dt
+        # self.dz = self.dB * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
+        self.dz = (-self.h ** (-2)) * self.hx @ self.fminus - gamma*(self.z - self.B)    # BaS derivative
         # self.dz = (-(cart_limit ** 2 - self.x ** 2) ** (-2)) * horzcat((-2 * self.x), 0, 0, 0) @ self.fminus        # BY HAND
         self.f = vertcat(self.dx, self.dq, ddx, ddq, self.dz)  # continuous dynamics
 
 
-        # ----------------- SEPARATE DYNAMICS (xdot = f(x) + g(x)*u) AUGMENTATION ---------------------
+        # ----------------- SEPARATE DYNAMICS (xdot = f(x) + g(x)*u) AUGMENTATION (NO NEED) ---------------------
         # self.f_fminus = vertcat(self.dx, self.dq, f_ddx, f_ddq)  # continuous SEPARATE DYNAMICS (x = f + g*u)
         # dz = self.dB * self.hx * self.f_fminus       # BaS derivative - SEPARATE DYNAMICS (x = f + g*u)
         # self.dz = dz[0] + dz[1] + dz[2] + dz[3]
         # self.f = vertcat(self.dx, self.dq, new_ddx, new_ddq, self.dz)      # Augmented Continuous SEPARATE (x = f + g*u) Dynamics
-        # ---------------------------------------------------------------------------------------------
-
+        # -------------------------------------------------------------------------------------------------------
 
     def initCost(self, wx=None, wq=None, wdx=None, wdq=None, wz=0.01, cart_limit=1, wu=0.001):
+        # sx = 10 * wx, sq = 10 * wq, sx = 10 * wdx, sdq = 10 * wdq, sz = 10 * wz
         # declare system parameters
         parameter = []
         if wx is None:
@@ -773,29 +749,36 @@ class BaS_CartPole:
         # TODO Make it modular - in a way we don't need to enter the function by hand for each dynamics
         zf = 1 / (cart_limit ** 2 - X_goal[0] ** 2)
 
-        X_goal += [zf]
+        X_goal = [0.0, math.pi, 0.0, 0.0, zf]
 
         self.xf = X_goal
 
         self.path_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
                 self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
                 self.z - X_goal[4]) ** 2 + wu * (self.U * self.U)
-        self.final_cost = 10*(self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
+        self.final_cost = 20*(self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
                 self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
                 self.z - X_goal[4]) ** 2)                                                        # final cost
 
-    def initCost_Quadratic(self, state_weights=None, wu=0.001):
-        # the path cost is of the form (x-b)'A(x-b)+wu*u'u, where A is the diagonal (diag_A)
-        goal_X = [0, pi, 0, 0]
+        # self.final_cost = 150 * (self.x - X_goal[0]) ** 2 + 500 * (self.q - X_goal[1]) ** 2 + 1 * (
+        #         self.dx - X_goal[2]) ** 2 + 1 * (self.dq - X_goal[3]) ** 2 + 1 * (self.z - X_goal[4]) ** 2
 
-        if state_weights is None:
-            state_weights = SX.sym('state_weights', self.X.numel())
-            self.cost_auxvar = vcat([state_weights])
-        else:
-            self.cost_auxvar = vcat([])
+        # self.final_cost = self.sx * (self.x - X_goal[0]) ** 2 + self.sq * (self.q - X_goal[1]) ** 2 + self.sdx * (
+        #         self.dx - X_goal[2]) ** 2 + self.sdq * (self.dq - X_goal[3]) ** 2 + self.sz * (
+        #         self.z - X_goal[4]) ** 2  # final cost
 
-        self.path_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X) + wu * dot(self.U, self.U)
-        self.final_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X)
+    # def initCost_Quadratic(self, state_weights=None, wu=0.001):
+    #     # the path cost is of the form (x-b)'A(x-b)+wu*u'u, where A is the diagonal (diag_A)
+    #     goal_X = [0, pi, 0, 0]
+    #
+    #     if state_weights is None:
+    #         state_weights = SX.sym('state_weights', self.X.numel())
+    #         self.cost_auxvar = vcat([state_weights])
+    #     else:
+    #         self.cost_auxvar = vcat([])
+    #
+    #     self.path_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X) + wu * dot(self.U, self.U)
+    #     self.final_cost = (self.X - goal_X).T @ diag(state_weights) @ (self.X - goal_X)
 
     def initConstraints(self, max_u=None, max_x=None):
         # set path constraint h_final(x)
@@ -814,15 +797,15 @@ class BaS_CartPole:
         path_inequ_Xlb = -self.X[0] - max_x
         self.path_inequ = vcat([path_inequ_Uub, path_inequ_Ulb, path_inequ_Xub, path_inequ_Xlb])
 
-    def initConstraints2(self, max_x, max_dx):
-        path_inequ_1 = self.X[0] - max_x
-        path_inequ_2 = -self.X[0] - max_x
-        path_inequ_3 = self.X[2] - max_dx
-        path_inequ_4 = -self.X[2] - max_dx
-
-        self.constraint_auxvar = []
-
-        self.path_inequ = vcat([path_inequ_1, path_inequ_2, path_inequ_3, path_inequ_4])
+    # def initConstraints2(self, max_x, max_dx):
+    #     path_inequ_1 = self.X[0] - max_x
+    #     path_inequ_2 = -self.X[0] - max_x
+    #     path_inequ_3 = self.X[2] - max_dx
+    #     path_inequ_4 = -self.X[2] - max_dx
+    #
+    #     self.constraint_auxvar = []
+    #
+    #     self.path_inequ = vcat([path_inequ_1, path_inequ_2, path_inequ_3, path_inequ_4])
 
     def play_animation(self, pole_len, dt, state_traj, state_traj_ref=None, save_option=0, title='Cart-pole system'):
 
