@@ -151,34 +151,35 @@ print('There were ', sum(safety), ' iterations in which safety was violated')
 print(' ')
 print('BARRIER AT:', max_x, '; WEIGHTS: diag(Q) = [', wx, ',', wq, ',', wdx, ',', wdq, ',', wz, ']; R = ', wu, '; diag(S) = 20*Q' )
 
-params = {'cart_lim': max_x,
-          'states_weights': [wx, wq, wdx, wdq, wz],
-          'control_weight': wu,
-          'dt': dt,
-          'horizon': horizon,
-          'convergence_limit': converge,
-          'total_iterations': k,
-          'learning_rate': lr,
-          'init_parameter': init_parameter,
-          'n_poly': n_poly,
-          }
 
 # # save the results
-# if True:
-#     save_data = {'loss_trace': loss_trace,
-#                  'solved_trajectory': state_traj,
-#                  'solved_controls': control_traj,
-#                  'barrier_function': h_propagated,
-#                  'safety': safety,
-#                  'coc_sol': coc_sol,
-#                  'params': params,
-#                  }
-#     np.save('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.npy', save_data)                      # .npy
-#     sio.savemat('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.mat', {'results': save_data})     # .mat
+if True:
+    params = {'cart_lim': max_x,
+              'states_weights': [wx, wq, wdx, wdq, wz],
+              'control_weight': wu,
+              'dt': dt,
+              'horizon': horizon,
+              'convergence_limit': converge,
+              'total_iterations': k,
+              'learning_rate': lr,
+              'init_parameter': init_parameter,
+              'n_poly': n_poly,
+              }
+
+    save_data = {'loss_trace': loss_trace,
+                 'solved_trajectory': state_traj,
+                 'solved_controls': control_traj,
+                 'barrier_function': h_propagated,
+                 'safety': safety,
+                 'coc_sol': coc_sol,
+                 'params': params,
+                 }
+    np.save('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.npy', save_data)                      # .npy
+    sio.savemat('./Results/BaS_Cartpole_Testing_lim_' + str(max_x) + '.mat', {'results': save_data})     # .mat
 
 # Plot states over time
 # times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole(env.xf, state_traj.T, control_traj.T, h.T, max_x)
+plot_cartpole.plotcartpole(env.xf, state_traj, control_traj, h, max_x)
 plt.show()
 
 # # Plot animation

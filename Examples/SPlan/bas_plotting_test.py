@@ -1,5 +1,5 @@
 import math
-
+import numpy as np
 from Plottings import plot_cartpole
 from casadi import *
 import scipy.io as sio
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 load_data = sio.loadmat('./Results/BaS_Cartpole_Testing_lim_1.mat')
 traj = load_data['results']['solved_trajectory'][0, 0]
+U = load_data['results']['solved_controls'][0, 0]
 
 # ctrl = load_data['results']['solved_controls'][0, 0]
 # h = load_data['results']['barrier_function'][0, 0]
@@ -25,7 +26,8 @@ horizon = 150
 
 # ctrl = np.linspace(0, dt*horizon-dt, horizon+1).T
 # times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole([0, math.pi, 0, 0, 0], traj, [], h, 1)
+
+plot_cartpole.plotcartpole([0, math.pi, 0, 0, 0], traj, U, h, 1)
 plt.show()
 
 # plt.plot(traj[:, 0], label='x')

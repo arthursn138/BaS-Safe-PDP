@@ -3,7 +3,7 @@ import numpy as np
 
 
 def plotcartpole(xf, X, U, h, cart_limit):
-
+    X = X.T
     # fig, ax = plt.subplots(2, 2, sharey=True)
     fig, ax = plt.subplots(2, 2, sharex=True)
     ax[0, 0].plot(X[0, :])
@@ -19,11 +19,13 @@ def plotcartpole(xf, X, U, h, cart_limit):
     ax[1, 0].title.set_text(r'$\dot{x}$')
 
     ax[1, 1].plot(X[3, :])
-    # ax[1, 1].title.set_text(r'$\dot{\theta}$')
+    ax[1, 1].title.set_text(r'$\dot{\theta}$')
 
     inv_h = []
     y = []
     for i in range(len(X[1, :])):
+        # if cart_limit == X[0, i]:
+        #     X[0, i] = X[0, i] * 1.00001
         inv_h += [1 / (cart_limit ** 2 - X[0, i] ** 2)]
         # inv_h += [1 / h[i]]
         y += [inv_h[i] - X[4, i]]
@@ -50,7 +52,7 @@ def plotcartpole(xf, X, U, h, cart_limit):
     # ax_check.legend()
 
     # fig_u, ax_u = plt.subplots()
-    # ax_u.plot(T[0:-1], U[0, :])
+    # ax_u.plot(T[0:-1], U[:, 0])
     # ax_u.set_title('Control effort over time')
 
     return fig, fig_bas

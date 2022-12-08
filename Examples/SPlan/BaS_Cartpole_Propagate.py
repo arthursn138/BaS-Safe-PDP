@@ -2,8 +2,6 @@
 import math
 import numpy as np
 from Plottings import plot_cartpole
-from casadi import *
-import scipy.io as sio
 import matplotlib.pyplot as plt
 
 # Load data
@@ -28,11 +26,11 @@ for i in range(len(solved_u)):
     # Augmented Continuous Dynamics
     dx = X[2]
     dq = X[3]
-    ddx = (U + mp * sin(X[1]) * (l * X[3] * X[3] + g * cos(X[1]))) / (
-                mc + mp * sin(X[1]) * sin(X[1]))                                # acceleration of x
-    ddq = (-U * cos(X[1]) - mp * l * X[3] * X[3] * sin(X[1]) * cos(X[1]) - (mc + mp) * g * sin(X[1])) / (
-            l * mc + l * mp * sin(X[1]) * sin(X[1]))                            # acceleration of theta
-    dz = (- (1 / (cart_lim ** 2 - X[0] ** 2)) ** 2) * (-2 * X[0]) * X[2]        # BaS Derivative
+    ddx = (U + mp * np.sin(X[1]) * (l * X[3] * X[3] + g * np.cos(X[1]))) / (
+                mc + mp * np.sin(X[1]) * np.sin(X[1]))                                # acceleration of x
+    ddq = (-U * np.cos(X[1]) - mp * l * X[3] * X[3] * np.sin(X[1]) * np.cos(X[1]) - (mc + mp) * g * np.sin(X[1])) / (
+            l * mc + l * mp * np.sin(X[1]) * np.sin(X[1]))                            # acceleration of theta
+    dz = (- (1 / (cart_lim ** 2 - X[0] ** 2)) ** 2) * (-2 * X[0]) * X[2]              # BaS Derivative
 
     # Euler integration
     x = X[0] + dt * dx
@@ -43,5 +41,5 @@ for i in range(len(solved_u)):
 
     traj += [[x, q, dx, dq, z]]
 
-plot_cartpole.plotcartpole([0, math.pi, 0, 0, 1], np.array(traj), U, [], 1)
+plot_cartpole.plotcartpole([0, math.pi, 0, 0, 1], np.array(traj), [], [], 1)
 plt.show()
