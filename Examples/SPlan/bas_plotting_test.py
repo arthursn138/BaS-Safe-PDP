@@ -22,10 +22,10 @@ h = load_data['results']['barrier_function'][0, 0]
 # horizon = 30
 dt = 0.02
 horizon = 150
-ctrl = np.linspace(0, dt*horizon-dt, horizon+1).T
 
-times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole([0, 0, 0, 0, 0], [0, math.pi, 0, 0, 0], times, traj.T, ctrl.T, h.T, 1)
+# ctrl = np.linspace(0, dt*horizon-dt, horizon+1).T
+# times = np.linspace(0, dt*horizon-dt, horizon+1)
+plot_cartpole.plotcartpole([0, math.pi, 0, 0, 0], traj, [], h, 1)
 plt.show()
 
 # plt.plot(traj[:, 0], label='x')

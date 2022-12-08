@@ -1068,6 +1068,7 @@ class CSysOPT:
             curr_x = state_traj[t]
             curr_h = cart_limit ** 2 - curr_x[0] ** 2           # BaS
             next_x = self.controlled_dyn_fn(t, curr_x, control_auxvar_value).full().flatten()
+            # print(self.controlled_dyn_fn)
             # print('NEXT_X: ', next_x)
             # h = safety_func(curr_x[0])               # BaS
             next_h = (cart_limit ** 2 - next_x[0] ** 2)  # BaS
