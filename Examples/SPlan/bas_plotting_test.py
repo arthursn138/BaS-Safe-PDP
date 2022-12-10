@@ -5,7 +5,7 @@ from casadi import *
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-load_data = sio.loadmat('./Results/BaS_Cartpole_Testing_lim_1.mat')
+load_data = sio.loadmat('./Results/BaS_Cartpole_dt_0.005.mat')
 traj = load_data['results']['solved_trajectory'][0, 0]
 U = load_data['results']['solved_controls'][0, 0]
 
