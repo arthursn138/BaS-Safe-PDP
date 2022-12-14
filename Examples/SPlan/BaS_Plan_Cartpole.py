@@ -17,8 +17,8 @@ wx, wq, wdx, wdq, wz, wu = 2.5, 5, 0.1, 0.1, 50, 0.10
 # wx, wq, wdx, wdq, wz, wu = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1     # Original values
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wz=wz, cart_limit=max_x, wu=wu)
 env.initConstraints(max_u=max_u, max_x=max_x)                 # Not used, since gamma = 0
-dt = 0.05           # orig 0.12
-horizon = 60       # orig 25
+dt = 0.12           # orig 0.12
+horizon = 25       # orig 25
 init_state = [0, 0, 0, 0, 1/max_x**2]
 dyn = env.X + dt * env.f
 
@@ -123,7 +123,7 @@ for k in range(int(max_iter)):
     # Check safety violations while learning    # TODO Implement the same for success
     for i in range(len(state_traj)):            # TODO [IMPORTANT] NOT h, x[4]!!!!
         h += [1 / (max_x ** 2 - state_traj[i, 0] ** 2)]
-        if 1/h[i] < 1e-15:
+        if 1/h[i] < 1e-10:
             safe_aux += [1]
         else:
             safe_aux += [0]
@@ -182,6 +182,8 @@ if True:
                  }
     np.save('./Results/BaS_Cartpole_dt_' + str(dt) + '.npy', save_data)                      # .npy
     sio.savemat('./Results/BaS_Cartpole_dt_' + str(dt) + '.mat', {'results': save_data})     # .mat
+    # np.save('./Results/BaS_DumbWeights_dt_' + str(dt) + 'lim_' + str(max_x) + '.npy', save_data)  # .npy
+    # sio.savemat('./Results/BaS_DumbWeights_dt_' + str(dt) + 'lim_' + str(max_x) + '.mat', {'results': save_data})  # .mat
 
 # Plot states over time
 plot_cartpole.plotcartpole(env.xf, state_traj, control_traj, h, max_x)

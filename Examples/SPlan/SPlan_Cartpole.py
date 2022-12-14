@@ -14,13 +14,13 @@ from Plottings import plot_cartpole
 env = NascimEnv.CartPole()
 mc, mp, l = 0.5, 0.5, 1
 env.initDyn(mc=mc, mp=mp, l=l)
-wx, wq, wdx, wdq, wu = 0.1, 1, 0.1, 0.1, 0.1
+wx, wq, wdx, wdq, wu = 0.3, 1.5, 0.1, 0.1, 0.1
 env.initCost(wx=wx, wq=wq, wdx=wdx, wdq=wdq, wu=wu)
-max_x = 0.4
+max_x = 0.9
 max_u = 4
 env.initConstraints(max_u=4, max_x=max_x)
 dt = 0.12
-horizon = 30
+horizon = 25
 init_state = [0, 0, 0, 0]
 dyn = env.X + dt * env.f
 
@@ -76,6 +76,10 @@ lr = 1e-1
 current_parameter = init_parameter
 safety = []
 safe_aux = []
+intermediate_traj = []
+intermediate_control = []
+unsafe_it_traj = []
+unsafe_k = []
 for k in range(int(max_iter)):
     # one iteration of PDP
     loss_barrier, loss, dp, state_traj, control_traj, h, = planner.step(init_state=init_state, horizon=horizon,
@@ -91,40 +95,59 @@ for k in range(int(max_iter)):
 
     # print
     if k % 100 == 0:
+        intermediate_traj += [state_traj]
+        intermediate_control += [control_traj]
         print('Iter #:', k, 'Loss_barrier:', loss_barrier, 'Loss:', loss)
 
     # Check safety violations                     # TODO [IMPORTANT] NOT h, x[4]!!!!
-    for i in range(len(h)):
-        if 1/h[i] < 1e-10:
-            safe_aux += [1]
-        else:
-            safe_aux += [0]
+    for i in range(len(state_traj)):  # TODO [IMPORTANT] NOT h, x[4]!!!!
+        for j in range(len(state_traj[1, :])):
+            cu = max_x - abs(state_traj[1, j])
+            if cu <= 0:
+                safe_aux += [1]
+                print(state_traj[1, j])
+            else:
+                safe_aux += [0]
 
     if sum(safe_aux) != 0:
         safety += [1]
+        unsafe_it_traj += [state_traj]
+        unsafe_k += [k]
     else:
         safety += [0]
 
 print('There were ', sum(safety), ' iterations in which safety was violated')
+print(unsafe_k)
 
-# save the results
+params = {'cart_lim': max_x,
+          'safety_gamma': gamma,
+          'states_weights': [wx, wq, wdx, wdq],
+          'control_weight': wu,
+          'dt': dt,
+          'horizon': horizon,
+          'total_iterations': k,
+          'learning_rate': lr,
+          'init_parameter': init_parameter,
+          'n_poly': n_poly,
+          # 'nn_seed': nn_seed,
+          }
+
+# # save the results
 if True:
     save_data = {'parameter_trace': parameter_trace,
                  'loss_trace': loss_trace,
                  'loss_barrier_trace': loss_barrier_trace,
-                 'gamma': gamma,
-                 'coc_sol': coc_sol,
                  'solved_trajectory': state_traj,
-                 'inverse_BaS': h,      # #TODO: Just for comparison
+                 'solved_controls': control_traj,
+                 'intermediate_trajectory': intermediate_traj,
+                 'intermediate_controls': intermediate_control,
+                 'unsafe_it_traj': unsafe_it_traj,
                  'safety': safety,
-                 'cart_lim': max_x,
-                 'lr': lr,
-                 'init_parameter': init_parameter,
-                 'n_poly': n_poly,
-                 # 'nn_seed': nn_seed
+                 'coc_sol': coc_sol,
+                 'params': params,
                  }
-    np.save('./Results/SPlan_Cartpole_Arthur_lim_' + str(max_x) + '.npy', save_data)
-    sio.savemat('./Results/SPlan_Cartpole_Arthur_lim_' + str(max_x) + '.mat', {'results': save_data})
+    np.save('./Results/SPlan_Cartpole_lim_' + str(max_x) + '.npy', save_data)
+    sio.savemat('./Results/SPlan_Cartpole_lim_' + str(max_x) + '.mat', {'results': save_data})
 
 # plt.plot(control_traj, label='SPDP_control')
 # plt.plot(coc_sol['control_traj_opt'], label='ct_control')
@@ -135,8 +158,8 @@ if True:
 # plt.legend()
 # plt.show()
 
-times = np.linspace(0, dt*horizon-dt, horizon+1)
-plot_cartpole.plotcartpole(init_state, env.xf, times, state_traj.T, control_traj.T, h.T, max_x)
+# times = np.linspace(0, dt*horizon-dt, horizon+1)
+plot_cartpole.plotcartpole(env.xf, state_traj, control_traj, h, max_x)
 plt.show()
 
 # env.play_animation(pole_len=2, dt=dt, state_traj=state_traj, save_option=1, title='Learned Motion, barrier at 0.8')

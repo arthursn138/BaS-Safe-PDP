@@ -21,22 +21,26 @@ def plotcartpole(xf, X, U, h, cart_limit):
     ax[1, 1].plot(X[3, :])
     ax[1, 1].title.set_text(r'$\dot{\theta}$')
 
-    inv_h = []
-    y = []
-    for i in range(len(X[1, :])):
-        # if cart_limit == X[0, i]:
-        #     X[0, i] = X[0, i] * 1.00001
-        inv_h += [1 / (cart_limit ** 2 - X[0, i] ** 2)]
-        # inv_h += [1 / h[i]]
-        y += [inv_h[i] - X[4, i]]
+    if len(X) > 4:
+        inv_h = []
+        y = []
+        for i in range(len(X[1, :])):
+            # if cart_limit == X[0, i]:
+            #     X[0, i] = X[0, i] * 1.00001
+            inv_h += [1 / (cart_limit ** 2 - X[0, i] ** 2)]
+            # inv_h += [1 / h[i]]
+            y += [inv_h[i] - X[4, i]]
 
-    fig_bas, ax_bas = plt.subplots()
-    ax_bas.plot(X[4, :], label='BaS (X(4))')
-    ax_bas.plot(inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
-    ax_bas.plot(np.zeros(X[0].shape))
-    ax_bas.set_title('BaS vs reference')
-    ax_bas.plot(y, label=r'BaS error ($\frac{1}{h(x)} - $X(4))')
-    ax_bas.legend()
+        fig_bas, ax_bas = plt.subplots()
+        ax_bas.plot(X[4, :], label='BaS (X(4))')
+        ax_bas.plot(inv_h, 'k--', label=r'$\frac{1}{h(x)}$')
+        ax_bas.plot(np.zeros(X[0].shape))
+        ax_bas.set_title('BaS vs reference')
+        ax_bas.plot(y, label=r'BaS error ($\frac{1}{h(x)} - $X(4))')
+        ax_bas.legend()
+
+    else:
+        fig_bas, ax_bas = plt.subplots()
 
     # fig_check, ax_check = plt.subplots()
     # ax_check.plot(T, X[0, :], label=r'$x$')

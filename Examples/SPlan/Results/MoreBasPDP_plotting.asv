@@ -59,7 +59,7 @@ legend('Propagated', 'Expected', 'Error due to discretization',...
 % % % plot(T,X(:,4),'LineWidth',1.5); hold on; grid on;
 % % % ylabel('$\dot{\theta}$ (deg/s)','Interpreter','latex', 'FontSize', 16);
 
-%% Multiple files
+%% Multiple files - 
 % Data loading and trajectories extraction
 data12 = load('BaS_Cartpole_dt_0.12.mat');
 data05 = load('BaS_Cartpole_dt_0.05.mat');
@@ -68,7 +68,7 @@ data01 = load('BaS_Cartpole_dt_0.01.mat');
 data005 = load('BaS_Cartpole_dt_0.005.mat');
 data002 = load('BaS_Cartpole_dt_0.002.mat');
 data001 = load('BaS_Cartpole_dt_0.001.mat');
-cart_lim = 1
+cart_lim = 1;
 
 X_12 = data12.results.solved_trajectory;
 X_05 = data05.results.solved_trajectory;

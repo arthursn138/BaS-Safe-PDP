@@ -7,7 +7,7 @@ clf; clc; clear all;
 BaS = load('BaS_Cartpole_Testing_lim_1.mat');
 SPlan = load('SPlan_Cartpole_Arthur_lim_1.mat');
 
-names = [[0.4: 0.1: 0.8] 1];
+names = [0.4: 0.1:0.8 1];
 for j = 1:length(names)
     mBaS(j) = load(['BaS_Cartpole_Testing_lim_', num2str(names(j)), '.mat']);
     
@@ -80,7 +80,7 @@ box on;
 % % % % % xlabel('Time (s)','Interpreter','latex');
 % % % % % box on;
 
-iter = [1:1:1500];
+iter = 1:1:1500;
 %%
 figure(2)
 hold on; grid on;
