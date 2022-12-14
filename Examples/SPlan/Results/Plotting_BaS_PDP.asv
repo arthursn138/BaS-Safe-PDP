@@ -176,6 +176,32 @@ title('$\theta$ over time (penalty method)', 'Interpreter', 'latex', 'FontSize',
 single = load('BaS_Cartpole_dt_0.12.mat');
 XX = single.results.solved_trajectory;
 
+figure(7) 
+subplot(2,2,1)
+plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
+plot(T,pi*ones(size(T)),'--r','LineWidth',1);
+
+subplot(2,2,2)
+plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
+plot(T,pi*ones(size(T)),'--r','LineWidth',1);
+
+subplot(2,2,3)
+plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
+plot(T,pi*ones(size(T)),'--r','LineWidth',1);
+
+subplot(2,2,4)
+plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
+plot(T,pi*ones(size(T)),'--r','LineWidth',1);
+
+nnames = [0.4 0.6 0.8 1];
+for j = 1:length(nnames)
+    BaSDisc(j) = load(['BaS_Cartpole_dt_0.01lim_', num2str(nnames(j)), '.mat']);
+    XX(j,:,:)
+end
+
+%% FOR SINGLE EXPERIMENT --- DO NOT DELETE/REPLACE
+
+% % % %% Single-file plots:
 % % % %% Plot BaS
 % % % if n == 5
 % % %     figure(1)
@@ -189,25 +215,31 @@ XX = single.results.solved_trajectory;
 % % %     legend('Propagated', 'Expected', 'Error due to discretization',...
 % % %         'Location', 'best', 'FontSize', 10);
 % % % end
-
-figure(7) 
-subplot(2,2,1)
-plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
-plot(T,pi*ones(size(T)),'--r','LineWidth',1);
-
-subplot(2,2,2)
-plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
-plot(T,pi*ones(size(T)),'--r','LineWidth',1);
-ylabel('$\theta$ (deg)','Interpreter','latex', 'FontSize', 16);
-
-subplot(2,2,3)
-plot(T,XX(:,3),'LineWidth',1.5); hold on; grid on;
-ylabel('$\dot{x}$ (m/s)','Interpreter','latex', 'FontSize', 16);
-
-subplot(2,2,4)
-plot(T,XX(:,4),'LineWidth',1.5); hold on; grid on;
-ylabel('$\dot{\theta}$ (deg/s)','Interpreter','latex', 'FontSize', 16);
-
+% % % 
+% % % %% Plot final states
+% % % figure(2) 
+% % % title('States over time','Interpreter','latex', 'FontSize', 16);
+% % % subplot(2,2,1)
+% % % plot(T,X(:,1),'LineWidth',1.5); hold on; grid on;
+% % % plot(T,zeros(size(T)),'--r','LineWidth',1);
+% % % plot(T,cart_lim*ones(length(T),1),'--k','LineWidth',0.8);
+% % % plot(T,-cart_lim*ones(length(T),1),'--k','LineWidth',0.8);
+% % % ylabel('x (m)','Interpreter','latex', 'FontSize', 16);
+% % % ylim([-1.2*cart_lim 1.2*cart_lim])
+% % % 
+% % % subplot(2,2,2)
+% % % plot(T,X(:,2),'LineWidth',1.5); hold on; grid on;
+% % % plot(T,pi*ones(size(T)),'--r','LineWidth',1);
+% % % ylabel('$\theta$ (rad)','Interpreter','latex', 'FontSize', 16);
+% % % 
+% % % subplot(2,2,3)
+% % % plot(T,X(:,3),'LineWidth',1.5); hold on; grid on;
+% % % ylabel('$\dot{x}$ (m/s)','Interpreter','latex', 'FontSize', 16);
+% % % 
+% % % subplot(2,2,4)
+% % % plot(T,X(:,4),'LineWidth',1.5); hold on; grid on;
+% % % ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex', 'FontSize', 16);
+% % % 
 % % % % %% Plot intermediate trajectories --- OBSOLETE
 % % % % 
 % % % % for j = 1:10:n

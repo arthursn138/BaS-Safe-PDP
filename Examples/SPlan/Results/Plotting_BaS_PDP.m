@@ -193,6 +193,12 @@ subplot(2,2,4)
 plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
 plot(T,pi*ones(size(T)),'--r','LineWidth',1);
 
+% % % nnames = [0.4 0.6 0.8 1];
+% % % for j = 1:length(nnames)
+% % %     BaSDisc(j) = load(['BaS_Cartpole_dt_0.01lim_', num2str(nnames(j)), '.mat']);
+% % %     XX(j,:,:) = BaSDisc(j).results.solved_trajectory;
+% % % end
+
 %% FOR SINGLE EXPERIMENT --- DO NOT DELETE/REPLACE
 
 % % % %% Single-file plots:
