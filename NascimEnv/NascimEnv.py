@@ -757,9 +757,9 @@ class BaS_CartPole:
         self.path_cost = self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
                 self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
                 self.z - X_goal[4]) ** 2 + wu * (self.U * self.U)
-        self.final_cost = 20*(self.wx * (self.x - X_goal[0]) ** 2 + self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
+        self.final_cost = self.wx * (self.x - X_goal[0]) ** 2 + 500*self.wq * (self.q - X_goal[1]) ** 2 + self.wdx * (
                 self.dx - X_goal[2]) ** 2 + self.wdq * (self.dq - X_goal[3]) ** 2 + self.wz * (
-                self.z - X_goal[4]) ** 2)                                                        # final cost
+                self.z - X_goal[4]) ** 2                                                        # final cost
 
         # self.final_cost = 150 * (self.x - X_goal[0]) ** 2 + 500 * (self.q - X_goal[1]) ** 2 + 1 * (
         #         self.dx - X_goal[2]) ** 2 + 1 * (self.dq - X_goal[3]) ** 2 + 1 * (self.z - X_goal[4]) ** 2

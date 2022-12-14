@@ -170,13 +170,45 @@ plot(T, pi*ones(size(T)),'--r','LineWidth',1);
 ylabel('$\theta$ (rad)','Interpreter','latex', 'FontSize', 18);
 title('$\theta$ over time (penalty method)', 'Interpreter', 'latex', 'FontSize', 18);
 
+% C: lim = 0.7
+figure(7)
+subplot(2,2,1)
+plot(T, X2(1,:,1),'LineWidth',1.5); hold on; grid on;
+% plot(T, zeros(size(T)),'--r','LineWidth',1);
+plot(T, cart_lim(1)*ones(length(T),1),'--k','LineWidth',0.8);
+plot(T, -cart_lim(1)*ones(length(T),1),'--k','LineWidth',0.8);
+ylabel('x (m)','Interpreter','latex', 'FontSize', 18);
+ylim([-1.2*cart_lim(1) 1.2*cart_lim(1)])
+title('X position (with BaS)', 'Interpreter', 'latex', 'FontSize', 18);
+
+subplot(2,2,2)
+plot(T, Xsplan(1,:,1),'LineWidth',1.5); hold on; grid on;
+% plot(T, zeros(size(T)),'--r','LineWidth',1);
+plot(T, cart_lim(1)*ones(length(T),1),'--k','LineWidth',0.8);
+plot(T, -cart_lim(1)*ones(length(T),1),'--k','LineWidth',0.8);
+ylabel('x (m)','Interpreter','latex', 'FontSize', 18);
+ylim([-1.2*cart_lim(1) 1.2*cart_lim(1)])
+title('X position (penalty method)', 'Interpreter', 'latex', 'FontSize', 18);
+
+subplot(2,2,3)
+plot(T, X2(1,:,2),'LineWidth',1.5); hold on; grid on;
+plot(T, pi*ones(size(T)),'--r','LineWidth',1);
+ylabel('$\theta$ (rad)','Interpreter','latex', 'FontSize', 18);
+title('$\theta$ over time (with BaS)', 'Interpreter', 'latex', 'FontSize', 18);
+
+subplot(2,2,4)
+plot(T, Xsplan(1,:,2),'LineWidth',1.5); hold on; grid on;
+plot(T, pi*ones(size(T)),'--r','LineWidth',1);
+ylabel('$\theta$ (rad)','Interpreter','latex', 'FontSize', 18);
+title('$\theta$ over time (penalty method)', 'Interpreter', 'latex', 'FontSize', 18);
+
 
 %% Plots (for single experiment)
 
 single = load('BaS_Cartpole_dt_0.12.mat');
 XX = single.results.solved_trajectory;
 
-figure(7) 
+figure
 subplot(2,2,1)
 plot(T,XX(:,2),'LineWidth',1.5); hold on; grid on;
 plot(T,pi*ones(size(T)),'--r','LineWidth',1);
